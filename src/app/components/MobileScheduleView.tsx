@@ -13,8 +13,6 @@ import {
   Checkbox,
   Slide,
   Grid,
-  Menu,
-  MenuItem,
 } from '@mui/material';
 import {
   Settings as SettingsIcon,
@@ -24,7 +22,6 @@ import {
   ChevronRight as ChevronRightIcon,
   CalendarToday as CalendarIcon,
 } from '@mui/icons-material';
-import TimePickerDialog from './TimePickerDialog';
 
 interface Plan {
   id: string;
@@ -40,15 +37,12 @@ export default function MobileScheduleView() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const [timePickerOpen, setTimePickerOpen] = useState(false);
-  const [timePickerMode, setTimePickerMode] = useState<'start' | 'end'>('start');
   const [newPlanStartTime, setNewPlanStartTime] = useState('09:00');
   const [newPlanEndTime, setNewPlanEndTime] = useState('10:00');
   const [newPlanContent, setNewPlanContent] = useState('');
   const [headerBgImage, setHeaderBgImage] = useState('');
   const [planBoxBgImage, setPlanBoxBgImage] = useState('');
   const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
-  const [addMenuAnchor, setAddMenuAnchor] = useState<null | HTMLElement>(null);
 
   useEffect(() => {
     const handleOpenDialog = () => {
@@ -168,31 +162,6 @@ export default function MobileScheduleView() {
     date.setDate(currentDate + offset);
     return date;
   });
-
-  const handleAddMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAddMenuAnchor(event.currentTarget);
-  };
-
-  const handleAddMenuClose = () => {
-    setAddMenuAnchor(null);
-  };
-
-  const handleAddPlan = () => {
-    setDialogOpen(true);
-    handleAddMenuClose();
-  };
-
-  const handleAddInsiration = () => {
-    // Trigger inspiration view
-    window.dispatchEvent(new CustomEvent('openAddInspirationDialog'));
-    handleAddMenuClose();
-  };
-
-  const handleAddStrategy = () => {
-    // Trigger strategy view
-    window.dispatchEvent(new CustomEvent('openAddStrategyDialog'));
-    handleAddMenuClose();
-  };
 
   return (
     <Box sx={{ bgcolor: '#FAFAFA', minHeight: '100%' }}>
@@ -460,7 +429,7 @@ export default function MobileScheduleView() {
         </Card>
       </Box>
 
-      {/* Add Plan Dialog - Improved with Time Picker */}
+      {/* Add Plan Dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm">
         <DialogContent>
           <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>
@@ -468,71 +437,24 @@ export default function MobileScheduleView() {
           </Typography>
 
           <Stack spacing={2.5}>
-            {/* Start Time */}
-            <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-                开始时间
-              </Typography>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={() => {
-                  setTimePickerMode('start');
-                  setTimePickerOpen(true);
-                }}
-                sx={{
-                  justifyContent: 'center',
-                  py: 1.5,
-                  borderRadius: 2,
-                  border: '2px solid',
-                  borderColor: 'primary.main',
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontFamily: 'monospace',
-                    fontWeight: 700,
-                    fontSize: '1.2rem',
-                    color: 'primary.main',
-                  }}
-                >
-                  {newPlanStartTime}
-                </Typography>
-              </Button>
-            </Box>
-
-            {/* End Time */}
-            <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-                结束时间
-              </Typography>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={() => {
-                  setTimePickerMode('end');
-                  setTimePickerOpen(true);
-                }}
-                sx={{
-                  justifyContent: 'center',
-                  py: 1.5,
-                  borderRadius: 2,
-                  border: '2px solid',
-                  borderColor: 'secondary.main',
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontFamily: 'monospace',
-                    fontWeight: 700,
-                    fontSize: '1.2rem',
-                    color: 'secondary.main',
-                  }}
-                >
-                  {newPlanEndTime}
-                </Typography>
-              </Button>
-            </Box>
+            <Stack direction="row" spacing={2}>
+              <TextField
+                type="time"
+                label="开始时间"
+                value={newPlanStartTime}
+                onChange={(e) => setNewPlanStartTime(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                sx={{ flex: 1 }}
+              />
+              <TextField
+                type="time"
+                label="结束时间"
+                value={newPlanEndTime}
+                onChange={(e) => setNewPlanEndTime(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                sx={{ flex: 1 }}
+              />
+            </Stack>
 
             <TextField
               fullWidth
@@ -564,21 +486,6 @@ export default function MobileScheduleView() {
           </Stack>
         </DialogContent>
       </Dialog>
-
-      {/* Time Picker Dialog */}
-      <TimePickerDialog
-        open={timePickerOpen}
-        title={timePickerMode === 'start' ? '选择开始时间' : '选择结束时间'}
-        initialTime={timePickerMode === 'start' ? newPlanStartTime : newPlanEndTime}
-        onClose={() => setTimePickerOpen(false)}
-        onConfirm={(time) => {
-          if (timePickerMode === 'start') {
-            setNewPlanStartTime(time);
-          } else {
-            setNewPlanEndTime(time);
-          }
-        }}
-      />
 
       {/* Date Picker Dialog */}
       <Dialog open={datePickerOpen} onClose={() => setDatePickerOpen(false)} maxWidth="sm" fullWidth>
@@ -709,40 +616,6 @@ export default function MobileScheduleView() {
           </Stack>
         </DialogContent>
       </Dialog>
-
-      {/* Add Menu for bottom button */}
-      <Menu
-        anchorEl={addMenuAnchor}
-        open={Boolean(addMenuAnchor)}
-        onClose={handleAddMenuClose}
-        anchorOrigin={{
-          vertical: 'top',
-          horizontal: 'center',
-        }}
-        transformOrigin={{
-          vertical: 'bottom',
-          horizontal: 'center',
-        }}
-      >
-        <MenuItem onClick={handleAddPlan} sx={{ py: 1.5 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box sx={{ fontSize: 20 }}>📅</Box>
-            <Typography>添加计划</Typography>
-          </Box>
-        </MenuItem>
-        <MenuItem onClick={handleAddInsiration} sx={{ py: 1.5 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box sx={{ fontSize: 20 }}>💡</Box>
-            <Typography>添加灵感</Typography>
-          </Box>
-        </MenuItem>
-        <MenuItem onClick={handleAddStrategy} sx={{ py: 1.5 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box sx={{ fontSize: 20 }}>🎯</Box>
-            <Typography>添加策略</Typography>
-          </Box>
-        </MenuItem>
-      </Menu>
     </Box>
   );
 }
