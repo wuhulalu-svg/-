@@ -5,16 +5,12 @@ import {
   Stack,
   Avatar,
   IconButton,
-  Menu,
-  MenuItem,
-  alpha,
 } from '@mui/material';
 import {
   CalendarMonth as CalendarIcon,
   Psychology as StrategyIcon,
   Settings as SettingsIcon,
   Add as AddIcon,
-  Close as CloseIcon,
 } from '@mui/icons-material';
 import ScheduleView from './ScheduleView';
 import StrategySettings from './StrategySettings';
@@ -30,7 +26,6 @@ export default function MainLayout() {
   const [sidebarBackground, setSidebarBackground] = useState<string>('');
   const [userName, setUserName] = useState('');
   const [userAvatar, setUserAvatar] = useState('');
-  const [addMenuAnchor, setAddMenuAnchor] = useState<null | HTMLElement>(null);
 
   useEffect(() => {
     const savedBg = localStorage.getItem('appBackgroundImage');
@@ -66,35 +61,6 @@ export default function MainLayout() {
       clearInterval(interval);
     };
   }, []);
-
-  const handleAddMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAddMenuAnchor(event.currentTarget);
-  };
-
-  const handleAddMenuClose = () => {
-    setAddMenuAnchor(null);
-  };
-
-  const handleAddPlan = () => {
-    setSelectedView('plan');
-    const event = new CustomEvent('openAddPlanDialog');
-    window.dispatchEvent(event);
-    handleAddMenuClose();
-  };
-
-  const handleAddInsipration = () => {
-    setSelectedView('schedule');
-    const event = new CustomEvent('openAddInspirationDialog');
-    window.dispatchEvent(event);
-    handleAddMenuClose();
-  };
-
-  const handleAddStrategy = () => {
-    setSelectedView('strategy');
-    const event = new CustomEvent('openAddStrategyDialog');
-    window.dispatchEvent(event);
-    handleAddMenuClose();
-  };
 
   return (
     <Box
@@ -171,9 +137,17 @@ export default function MainLayout() {
           </Typography>
         </IconButton>
 
-        {/* Center Add Button with Menu */}
+        {/* Center Add Button */}
         <Box
-          onClick={handleAddMenuOpen}
+          onClick={() => {
+            if (selectedView === 'plan') {
+              // Trigger add plan dialog
+              const event = new CustomEvent('openAddPlanDialog');
+              window.dispatchEvent(event);
+            } else {
+              setSelectedView('plan');
+            }
+          }}
           sx={{
             width: 56,
             height: 56,
@@ -225,84 +199,6 @@ export default function MainLayout() {
           </Typography>
         </IconButton>
       </Box>
-
-      {/* Add Menu */}
-      <Menu
-        anchorEl={addMenuAnchor}
-        open={Boolean(addMenuAnchor)}
-        onClose={handleAddMenuClose}
-        anchorOrigin={{
-          vertical: 'top',
-          horizontal: 'center',
-        }}
-        transformOrigin={{
-          vertical: 'bottom',
-          horizontal: 'center',
-        }}
-        sx={{
-          '& .MuiPaper-root': {
-            borderRadius: 3,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
-          }
-        }}
-      >
-        <MenuItem 
-          onClick={handleAddPlan}
-          sx={{ 
-            py: 1.5,
-            px: 3,
-            '&:hover': {
-              bgcolor: alpha('#6366f1', 0.1),
-            }
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box sx={{ fontSize: 24 }}>📅</Box>
-            <Stack spacing={0.2}>
-              <Typography sx={{ fontWeight: 600 }}>添加计划</Typography>
-              <Typography variant="caption" color="text.secondary">需要设置时间</Typography>
-            </Stack>
-          </Box>
-        </MenuItem>
-
-        <MenuItem 
-          onClick={handleAddInsipration}
-          sx={{ 
-            py: 1.5,
-            px: 3,
-            '&:hover': {
-              bgcolor: alpha('#ec4899', 0.1),
-            }
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box sx={{ fontSize: 24 }}>💡</Box>
-            <Stack spacing={0.2}>
-              <Typography sx={{ fontWeight: 600 }}>添加灵感</Typography>
-              <Typography variant="caption" color="text.secondary">快速记录想法</Typography>
-            </Stack>
-          </Box>
-        </MenuItem>
-
-        <MenuItem 
-          onClick={handleAddStrategy}
-          sx={{ 
-            py: 1.5,
-            px: 3,
-            '&:hover': {
-              bgcolor: alpha('#06b6d4', 0.1),
-            }
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box sx={{ fontSize: 24 }}>🎯</Box>
-            <Stack spacing={0.2}>
-              <Typography sx={{ fontWeight: 600 }}>添加策略</Typography>
-              <Typography variant="caption" color="text.secondary">制定长期计划</Typography>
-            </Stack>
-          </Box>
-        </MenuItem>
-      </Menu>
 
       {/* Header - Only show for settings view */}
       {selectedView === 'settings' && (
