@@ -13,18 +13,18 @@ import {
   DialogActions,
   alpha,
   Paper,
-  Fade,
-  Grow,
+  Tabs,
+  Tab,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
   Settings as SettingsIcon,
-  ShoppingCart as ShoppingIcon,
-  Kitchen as KitchenIcon,
-  Assignment as TodoIcon,
-  AutoAwesome as SparklesIcon,
+  MoreVert as MoreVertIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 
 interface Item {
@@ -33,64 +33,41 @@ interface Item {
   completed: boolean;
 }
 
-interface ListSection {
+interface ListBox {
   id: string;
   name: string;
   items: Item[];
-  editable: boolean;
-  icon: React.ReactNode;
 }
 
 export default function InspirationView() {
-  const [sections, setSections] = useState<ListSection[]>([
-    { 
-      id: '1', 
-      name: '要购买的东西', 
-      items: [], 
-      editable: false,
-      icon: <ShoppingIcon sx={{ fontSize: 28 }} /> 
-    },
-    { 
-      id: '2', 
-      name: '想要做的菜', 
-      items: [], 
-      editable: false,
-      icon: <KitchenIcon sx={{ fontSize: 28 }} /> 
-    },
-    { 
-      id: '3', 
-      name: '待办事项', 
-      items: [], 
-      editable: true,
-      icon: <TodoIcon sx={{ fontSize: 28 }} /> 
-    },
+  const [boxes, setBoxes] = useState<ListBox[]>([
+    { id: 'default', name: '未命名', items: [] },
   ]);
-
-  const [editNameDialog, setEditNameDialog] = useState(false);
+  const [activeBoxId, setActiveBoxId] = useState('default');
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [editingSectionId, setEditingSectionId] = useState('');
-  const [newSectionName, setNewSectionName] = useState('');
   const [inspirationBgImage, setInspirationBgImage] = useState('');
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [renamingBoxId, setRenamingBoxId] = useState('');
+  const [newBoxName, setNewBoxName] = useState('');
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [menuBoxId, setMenuBoxId] = useState('');
 
-  // 加载保存的数据
   useEffect(() => {
-    const saved = localStorage.getItem('inspirationSections');
+    const savedBoxes = localStorage.getItem('inspirationBoxes');
+    const savedActiveId = localStorage.getItem('inspirationActiveBoxId');
     const savedBg = localStorage.getItem('inspirationBgImage');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // 合并图标，防止丢失
-      const merged = parsed.map((sec: any, idx: number) => ({
-        ...sec,
-        icon: sections[idx]?.icon || <SparklesIcon />,
-      }));
-      setSections(merged);
-    }
+    if (savedBoxes) setBoxes(JSON.parse(savedBoxes));
+    if (savedActiveId) setActiveBoxId(savedActiveId);
     if (savedBg) setInspirationBgImage(savedBg);
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('inspirationSections', JSON.stringify(sections));
-  }, [sections]);
+    localStorage.setItem('inspirationBoxes', JSON.stringify(boxes));
+  }, [boxes]);
+
+  useEffect(() => {
+    localStorage.setItem('inspirationActiveBoxId', activeBoxId);
+  }, [activeBoxId]);
 
   const handleBgUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -105,82 +82,109 @@ export default function InspirationView() {
     }
   };
 
-  const addItem = (sectionId: string) => {
-    setSections(sections.map(section => {
-      if (section.id === sectionId) {
+  const addNewBox = () => {
+    const newId = Date.now().toString();
+    const newBox: ListBox = {
+      id: newId,
+      name: '未命名',
+      items: [],
+    };
+    setBoxes([...boxes, newBox]);
+    setActiveBoxId(newId);
+  };
+
+  const deleteBox = (boxId: string) => {
+    if (boxes.length === 1) return; // 至少保留一个框框
+    const newBoxes = boxes.filter(b => b.id !== boxId);
+    setBoxes(newBoxes);
+    if (activeBoxId === boxId) {
+      setActiveBoxId(newBoxes[0].id);
+    }
+    setAnchorEl(null);
+  };
+
+  const openRenameDialog = (boxId: string) => {
+    const box = boxes.find(b => b.id === boxId);
+    if (box) {
+      setRenamingBoxId(boxId);
+      setNewBoxName(box.name);
+      setRenameDialogOpen(true);
+    }
+    setAnchorEl(null);
+  };
+
+  const saveRename = () => {
+    if (!newBoxName.trim()) return;
+    setBoxes(boxes.map(b =>
+      b.id === renamingBoxId ? { ...b, name: newBoxName.trim() } : b
+    ));
+    setRenameDialogOpen(false);
+    setNewBoxName('');
+  };
+
+  const addItem = () => {
+    setBoxes(boxes.map(box => {
+      if (box.id === activeBoxId) {
         return {
-          ...section,
-          items: [...section.items, { id: Date.now().toString(), content: '', completed: false }],
+          ...box,
+          items: [...box.items, { id: Date.now().toString(), content: '', completed: false }],
         };
       }
-      return section;
+      return box;
     }));
   };
 
-  const updateItem = (sectionId: string, itemId: string, content: string) => {
-    setSections(sections.map(section => {
-      if (section.id === sectionId) {
+  const updateItem = (itemId: string, content: string) => {
+    setBoxes(boxes.map(box => {
+      if (box.id === activeBoxId) {
         return {
-          ...section,
-          items: section.items.map(item =>
+          ...box,
+          items: box.items.map(item =>
             item.id === itemId ? { ...item, content } : item
           ),
         };
       }
-      return section;
+      return box;
     }));
   };
 
-  const toggleItem = (sectionId: string, itemId: string) => {
-    setSections(sections.map(section => {
-      if (section.id === sectionId) {
+  const toggleItem = (itemId: string) => {
+    setBoxes(boxes.map(box => {
+      if (box.id === activeBoxId) {
         return {
-          ...section,
-          items: section.items.map(item =>
+          ...box,
+          items: box.items.map(item =>
             item.id === itemId ? { ...item, completed: !item.completed } : item
           ),
         };
       }
-      return section;
+      return box;
     }));
   };
 
-  const deleteItem = (sectionId: string, itemId: string) => {
-    setSections(sections.map(section => {
-      if (section.id === sectionId) {
+  const deleteItem = (itemId: string) => {
+    setBoxes(boxes.map(box => {
+      if (box.id === activeBoxId) {
         return {
-          ...section,
-          items: section.items.filter(item => item.id !== itemId),
+          ...box,
+          items: box.items.filter(item => item.id !== itemId),
         };
       }
-      return section;
+      return box;
     }));
   };
 
-  const openEditNameDialog = (sectionId: string) => {
-    const section = sections.find(s => s.id === sectionId);
-    if (section?.editable) {
-      setEditingSectionId(sectionId);
-      setNewSectionName(section.name);
-      setEditNameDialog(true);
-    }
+  const activeBox = boxes.find(b => b.id === activeBoxId) || boxes[0];
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, boxId: string) => {
+    setAnchorEl(event.currentTarget);
+    setMenuBoxId(boxId);
   };
 
-  const saveSectionName = () => {
-    setSections(sections.map(section =>
-      section.id === editingSectionId
-        ? { ...section, name: newSectionName }
-        : section
-    ));
-    setEditNameDialog(false);
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setMenuBoxId('');
   };
-
-  // 每个卡片独立的配色（柔和）
-  const cardColors = [
-    { gradient: 'linear-gradient(135deg, #fff5f0 0%, #ffe9e0 100%)', accent: '#FF8A65', borderLight: '#FFBBA0' },
-    { gradient: 'linear-gradient(135deg, #f0f9f0 0%, #e0f5e0 100%)', accent: '#66BB6A', borderLight: '#A5D6A7' },
-    { gradient: 'linear-gradient(135deg, #f0f4ff 0%, #e3e9ff 100%)', accent: '#7986CB', borderLight: '#B2C2FF' },
-  ];
 
   return (
     <Box
@@ -193,7 +197,7 @@ export default function InspirationView() {
         backgroundAttachment: 'fixed',
       }}
     >
-      {/* 浮层遮罩（增强背景可读性） */}
+      {/* 半透遮罩 */}
       {inspirationBgImage && (
         <Box
           sx={{
@@ -202,15 +206,15 @@ export default function InspirationView() {
             left: 0,
             right: 0,
             bottom: 0,
-            bgcolor: 'rgba(255, 255, 255, 0.6)',
+            bgcolor: 'rgba(255, 255, 255, 0.75)',
             backdropFilter: 'blur(2px)',
             zIndex: 0,
           }}
         />
       )}
 
-      <Stack spacing={3} sx={{ position: 'relative', zIndex: 1 }}>
-        {/* 头部设置按钮 */}
+      <Stack spacing={2} sx={{ position: 'relative', zIndex: 1 }}>
+        {/* 头部：设置按钮 */}
         <Stack direction="row" justifyContent="flex-end">
           <IconButton
             onClick={() => setSettingsOpen(true)}
@@ -225,208 +229,200 @@ export default function InspirationView() {
           </IconButton>
         </Stack>
 
-        {sections.map((section, idx) => (
-          <Grow in timeout={300 * idx} key={section.id}>
-            <Card
+        {/* 框框选项卡区域 */}
+        <Paper
+          elevation={2}
+          sx={{
+            borderRadius: 4,
+            overflow: 'hidden',
+            bgcolor: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: 1, borderColor: 'divider' }}>
+            <Tabs
+              value={activeBoxId}
+              onChange={(_, val) => setActiveBoxId(val)}
+              variant="scrollable"
+              scrollButtons="auto"
               sx={{
-                borderRadius: 5,
-                overflow: 'hidden',
-                background: cardColors[idx % cardColors.length].gradient,
-                border: `1px solid ${cardColors[idx % cardColors.length].borderLight}`,
-                boxShadow: '0 8px 20px rgba(0,0,0,0.05)',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: '0 16px 30px rgba(0,0,0,0.1)',
+                flex: 1,
+                '& .MuiTab-root': {
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  fontSize: '0.9rem',
+                  minHeight: 56,
+                },
+                '& .Mui-selected': {
+                  color: 'primary.main',
                 },
               }}
             >
-              {/* 卡片头部 */}
-              <Box
-                sx={{
-                  px: 3,
-                  py: 2,
-                  borderBottom: `2px solid ${cardColors[idx % cardColors.length].accent}20`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <Stack direction="row" spacing={1.5} alignItems="center">
-                  <Box
-                    sx={{
-                      p: 1,
-                      borderRadius: '50%',
-                      bgcolor: `${cardColors[idx % cardColors.length].accent}20`,
-                      color: cardColors[idx % cardColors.length].accent,
-                    }}
-                  >
-                    {section.icon}
-                  </Box>
-                  <Typography
-                    variant="h5"
-                    sx={{
-                      fontWeight: 700,
-                      letterSpacing: -0.5,
-                      background: `linear-gradient(135deg, ${cardColors[idx % cardColors.length].accent}, #2c3e50)`,
-                      backgroundClip: 'text',
-                      WebkitBackgroundClip: 'text',
-                      color: 'transparent',
-                    }}
-                  >
-                    {section.name}
-                  </Typography>
-                  {section.editable && (
-                    <IconButton
-                      size="small"
-                      onClick={() => openEditNameDialog(section.id)}
-                      sx={{ color: cardColors[idx % cardColors.length].accent }}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                  )}
-                </Stack>
-                <Button
-                  variant="contained"
-                  startIcon={<AddIcon />}
-                  onClick={() => addItem(section.id)}
+              {boxes.map(box => (
+                <Tab
+                  key={box.id}
+                  value={box.id}
+                  label={box.name}
                   sx={{
-                    textTransform: 'none',
-                    borderRadius: 40,
-                    bgcolor: cardColors[idx % cardColors.length].accent,
-                    boxShadow: 'none',
-                    '&:hover': {
-                      bgcolor: cardColors[idx % cardColors.length].accent,
-                      filter: 'brightness(0.95)',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                    },
+                    maxWidth: 'none',
                   }}
-                >
-                  添加
-                </Button>
-              </Box>
+                />
+              ))}
+            </Tabs>
+            <IconButton onClick={addNewBox} sx={{ mx: 1 }}>
+              <AddIcon />
+            </IconButton>
+          </Box>
 
-              {/* 列表项 */}
-              <Box sx={{ p: 2 }}>
-                <Stack spacing={1.5}>
-                  {section.items.length > 0 ? (
-                    section.items.map((item) => (
-                      <Paper
-                        key={item.id}
-                        elevation={0}
+          {/* 当前框框的操作栏 */}
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ px: 2, py: 1.5, bgcolor: 'rgba(0,0,0,0.02)' }}
+          >
+            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+              {activeBox.name}
+            </Typography>
+            <Stack direction="row" spacing={1}>
+              <IconButton size="small" onClick={() => openRenameDialog(activeBoxId)}>
+                <EditIcon fontSize="small" />
+              </IconButton>
+              <IconButton
+                size="small"
+                onClick={(e) => handleMenuOpen(e, activeBoxId)}
+                disabled={boxes.length === 1}
+              >
+                <DeleteIcon fontSize="small" color={boxes.length === 1 ? 'disabled' : 'error'} />
+              </IconButton>
+            </Stack>
+          </Stack>
+
+          {/* 待办列表区域 */}
+          <Box sx={{ p: 2 }}>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={addItem}
+              fullWidth
+              sx={{
+                mb: 2,
+                borderRadius: 40,
+                textTransform: 'none',
+                bgcolor: 'primary.main',
+                '&:hover': { bgcolor: 'primary.dark' },
+              }}
+            >
+              添加待办项
+            </Button>
+
+            <Stack spacing={1.5}>
+              {activeBox.items.length > 0 ? (
+                activeBox.items.map((item) => (
+                  <Paper
+                    key={item.id}
+                    elevation={0}
+                    sx={{
+                      p: 1.5,
+                      borderRadius: 3,
+                      bgcolor: 'background.paper',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        boxShadow: 2,
+                        borderColor: 'primary.main',
+                      },
+                    }}
+                  >
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Checkbox
+                        checked={item.completed}
+                        onChange={() => toggleItem(item.id)}
+                        size="medium"
+                        sx={{ color: 'primary.main', '&.Mui-checked': { color: 'primary.main' } }}
+                      />
+                      <TextField
+                        fullWidth
+                        value={item.content}
+                        onChange={(e) => updateItem(item.id, e.target.value)}
+                        placeholder="输入内容..."
+                        variant="standard"
+                        size="small"
                         sx={{
-                          p: 1.5,
-                          borderRadius: 3,
-                          bgcolor: 'rgba(255,255,255,0.7)',
-                          backdropFilter: 'blur(4px)',
-                          transition: 'all 0.2s',
-                          '&:hover': {
-                            bgcolor: 'white',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                            '& .delete-btn': { opacity: 1 },
+                          '& .MuiInput-root': {
+                            fontSize: '0.95rem',
+                            textDecoration: item.completed ? 'line-through' : 'none',
+                            opacity: item.completed ? 0.6 : 1,
+                          },
+                          '& .MuiInput-root:before, & .MuiInput-root:after': {
+                            borderBottom: 'none',
                           },
                         }}
-                      >
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Checkbox
-                            checked={item.completed}
-                            onChange={() => toggleItem(section.id, item.id)}
-                            size="medium"
-                            sx={{
-                              color: cardColors[idx % cardColors.length].accent,
-                              '&.Mui-checked': {
-                                color: cardColors[idx % cardColors.length].accent,
-                              },
-                            }}
-                          />
-                          <TextField
-                            fullWidth
-                            value={item.content}
-                            onChange={(e) => updateItem(section.id, item.id, e.target.value)}
-                            placeholder="写点什么..."
-                            variant="standard"
-                            size="small"
-                            sx={{
-                              '& .MuiInput-root': {
-                                fontSize: '1rem',
-                                textDecoration: item.completed ? 'line-through' : 'none',
-                                opacity: item.completed ? 0.6 : 1,
-                                fontWeight: item.completed ? 400 : 500,
-                              },
-                              '& .MuiInput-root:before, & .MuiInput-root:after': {
-                                borderBottom: 'none',
-                              },
-                            }}
-                          />
-                          <IconButton
-                            className="delete-btn"
-                            size="small"
-                            onClick={() => deleteItem(section.id, item.id)}
-                            sx={{
-                              opacity: { xs: 1, sm: 0 },
-                              transition: 'opacity 0.2s',
-                              color: '#f06292',
-                            }}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Stack>
-                      </Paper>
-                    ))
-                  ) : (
-                    <Fade in>
-                      <Box
-                        sx={{
-                          py: 6,
-                          textAlign: 'center',
-                          borderRadius: 3,
-                          bgcolor: 'rgba(255,255,255,0.5)',
-                          border: '1px dashed',
-                          borderColor: 'divider',
-                        }}
-                      >
-                        <SparklesIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1, opacity: 0.5 }} />
-                        <Typography variant="body2" color="text.secondary">
-                          暂无内容，点击“添加”开始记录灵感
-                        </Typography>
-                      </Box>
-                    </Fade>
-                  )}
-                </Stack>
-              </Box>
-            </Card>
-          </Grow>
-        ))}
+                      />
+                      <IconButton size="small" onClick={() => deleteItem(item.id)} sx={{ color: 'error.main' }}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
+                  </Paper>
+                ))
+              ) : (
+                <Box
+                  sx={{
+                    py: 6,
+                    textAlign: 'center',
+                    borderRadius: 3,
+                    bgcolor: 'rgba(0,0,0,0.02)',
+                    border: '1px dashed',
+                    borderColor: 'divider',
+                  }}
+                >
+                  <Typography variant="body2" color="text.secondary">
+                    暂无待办项，点击上方按钮添加
+                  </Typography>
+                </Box>
+              )}
+            </Stack>
+          </Box>
+        </Paper>
       </Stack>
 
-      {/* 编辑名称弹窗 */}
-      <Dialog open={editNameDialog} onClose={() => setEditNameDialog(false)} maxWidth="sm" fullWidth>
+      {/* 重命名对话框 */}
+      <Dialog open={renameDialogOpen} onClose={() => setRenameDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogContent sx={{ pt: 3 }}>
           <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-            修改列表名称
+            重命名框框
           </Typography>
           <TextField
             fullWidth
-            label="列表名称"
-            value={newSectionName}
-            onChange={(e) => setNewSectionName(e.target.value)}
+            label="名称"
+            value={newBoxName}
+            onChange={(e) => setNewBoxName(e.target.value)}
             autoFocus
           />
         </DialogContent>
         <DialogActions sx={{ pb: 3, px: 3 }}>
-          <Button onClick={() => setEditNameDialog(false)} sx={{ textTransform: 'none' }}>
+          <Button onClick={() => setRenameDialogOpen(false)} sx={{ textTransform: 'none' }}>
             取消
           </Button>
-          <Button
-            onClick={saveSectionName}
-            variant="contained"
-            disabled={!newSectionName.trim()}
-            sx={{ textTransform: 'none' }}
-          >
+          <Button onClick={saveRename} variant="contained" disabled={!newBoxName.trim()} sx={{ textTransform: 'none' }}>
             保存
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* 删除确认菜单 */}
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
+        <MenuItem
+          onClick={() => {
+            deleteBox(menuBoxId);
+            handleMenuClose();
+          }}
+          sx={{ color: 'error.main' }}
+        >
+          <DeleteIcon fontSize="small" sx={{ mr: 1 }} /> 删除此框框
+        </MenuItem>
+      </Menu>
 
       {/* 背景设置弹窗 */}
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} fullWidth maxWidth="sm">
