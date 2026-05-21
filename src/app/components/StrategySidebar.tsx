@@ -1,267 +1,473 @@
 import { useState, useEffect } from 'react';
 import {
   Box,
-  TextField,
-  IconButton,
   Typography,
   Stack,
+  TextField,
+  IconButton,
+  Card,
+  Checkbox,
   Button,
   Dialog,
-  DialogTitle,
   DialogContent,
   DialogActions,
-  Divider,
-  Card,
-  Collapse,
+  alpha,
+  Paper,
+  Tabs,
+  Tab,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
-  FitnessCenter as FitnessIcon,
-  Restaurant as RestaurantIcon,
-  Psychology as PsychologyIcon,
-  Schedule as ScheduleIcon,
+  Settings as SettingsIcon,
+  MoreVert as MoreVertIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 
-interface Strategy {
+interface Item {
   id: string;
-  title: string;
   content: string;
-  expanded: boolean;
+  completed: boolean;
 }
 
-const strategyIcons: { [key: string]: any } = {
-  '健康': FitnessIcon,
-  '饮食': RestaurantIcon,
-  '心理': PsychologyIcon,
-  '默认': ScheduleIcon,
-};
+interface ListBox {
+  id: string;
+  name: string;
+  items: Item[];
+}
 
-const getStrategyIcon = (title: string) => {
-  for (const [key, Icon] of Object.entries(strategyIcons)) {
-    if (title.includes(key)) return Icon;
-  }
-  return strategyIcons['默认'];
-};
-
-export default function StrategySidebar() {
-  const [strategies, setStrategies] = useState<Strategy[]>(() => {
-    const saved = localStorage.getItem('strategies');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingStrategy, setEditingStrategy] = useState<Strategy | null>(null);
-  const [formData, setFormData] = useState({ title: '', content: '' });
+export default function InspirationView() {
+  const [boxes, setBoxes] = useState<ListBox[]>([
+    { id: 'default', name: '未命名', items: [] },
+  ]);
+  const [activeBoxId, setActiveBoxId] = useState('default');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [inspirationBgImage, setInspirationBgImage] = useState('');
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [renamingBoxId, setRenamingBoxId] = useState('');
+  const [newBoxName, setNewBoxName] = useState('');
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [menuBoxId, setMenuBoxId] = useState('');
 
   useEffect(() => {
-    localStorage.setItem('strategies', JSON.stringify(strategies));
-  }, [strategies]);
+    const savedBoxes = localStorage.getItem('inspirationBoxes');
+    const savedActiveId = localStorage.getItem('inspirationActiveBoxId');
+    const savedBg = localStorage.getItem('inspirationBgImage');
+    if (savedBoxes) setBoxes(JSON.parse(savedBoxes));
+    if (savedActiveId) setActiveBoxId(savedActiveId);
+    if (savedBg) setInspirationBgImage(savedBg);
+  }, []);
 
-  const openDialog = (strategy?: Strategy) => {
-    if (strategy) {
-      setEditingStrategy(strategy);
-      setFormData({ title: strategy.title, content: strategy.content });
-    } else {
-      setEditingStrategy(null);
-      setFormData({ title: '', content: '' });
-    }
-    setDialogOpen(true);
-  };
+  useEffect(() => {
+    localStorage.setItem('inspirationBoxes', JSON.stringify(boxes));
+  }, [boxes]);
 
-  const closeDialog = () => {
-    setDialogOpen(false);
-    setEditingStrategy(null);
-    setFormData({ title: '', content: '' });
-  };
+  useEffect(() => {
+    localStorage.setItem('inspirationActiveBoxId', activeBoxId);
+  }, [activeBoxId]);
 
-  const saveStrategy = () => {
-    if (!formData.title.trim()) return;
-
-    if (editingStrategy) {
-      setStrategies(strategies.map(s =>
-        s.id === editingStrategy.id
-          ? { ...s, title: formData.title, content: formData.content }
-          : s
-      ));
-    } else {
-      const newStrategy: Strategy = {
-        id: Date.now().toString(),
-        title: formData.title,
-        content: formData.content,
-        expanded: false,
+  const handleBgUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setInspirationBgImage(result);
+        localStorage.setItem('inspirationBgImage', result);
       };
-      setStrategies([...strategies, newStrategy]);
+      reader.readAsDataURL(file);
     }
-
-    closeDialog();
   };
 
-  const deleteStrategy = (id: string) => {
-    setStrategies(strategies.filter(s => s.id !== id));
+  const addNewBox = () => {
+    const newId = Date.now().toString();
+    const newBox: ListBox = {
+      id: newId,
+      name: '未命名',
+      items: [],
+    };
+    setBoxes([...boxes, newBox]);
+    setActiveBoxId(newId);
   };
 
-  const toggleExpanded = (id: string) => {
-    setStrategies(strategies.map(s =>
-      s.id === id ? { ...s, expanded: !s.expanded } : s
+  const deleteBox = (boxId: string) => {
+    if (boxes.length === 1) return; // 至少保留一个框框
+    const newBoxes = boxes.filter(b => b.id !== boxId);
+    setBoxes(newBoxes);
+    if (activeBoxId === boxId) {
+      setActiveBoxId(newBoxes[0].id);
+    }
+    setAnchorEl(null);
+  };
+
+  const openRenameDialog = (boxId: string) => {
+    const box = boxes.find(b => b.id === boxId);
+    if (box) {
+      setRenamingBoxId(boxId);
+      setNewBoxName(box.name);
+      setRenameDialogOpen(true);
+    }
+    setAnchorEl(null);
+  };
+
+  const saveRename = () => {
+    if (!newBoxName.trim()) return;
+    setBoxes(boxes.map(b =>
+      b.id === renamingBoxId ? { ...b, name: newBoxName.trim() } : b
     ));
+    setRenameDialogOpen(false);
+    setNewBoxName('');
+  };
+
+  const addItem = () => {
+    setBoxes(boxes.map(box => {
+      if (box.id === activeBoxId) {
+        return {
+          ...box,
+          items: [...box.items, { id: Date.now().toString(), content: '', completed: false }],
+        };
+      }
+      return box;
+    }));
+  };
+
+  const updateItem = (itemId: string, content: string) => {
+    setBoxes(boxes.map(box => {
+      if (box.id === activeBoxId) {
+        return {
+          ...box,
+          items: box.items.map(item =>
+            item.id === itemId ? { ...item, content } : item
+          ),
+        };
+      }
+      return box;
+    }));
+  };
+
+  const toggleItem = (itemId: string) => {
+    setBoxes(boxes.map(box => {
+      if (box.id === activeBoxId) {
+        return {
+          ...box,
+          items: box.items.map(item =>
+            item.id === itemId ? { ...item, completed: !item.completed } : item
+          ),
+        };
+      }
+      return box;
+    }));
+  };
+
+  const deleteItem = (itemId: string) => {
+    setBoxes(boxes.map(box => {
+      if (box.id === activeBoxId) {
+        return {
+          ...box,
+          items: box.items.filter(item => item.id !== itemId),
+        };
+      }
+      return box;
+    }));
+  };
+
+  const activeBox = boxes.find(b => b.id === activeBoxId) || boxes[0];
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, boxId: string) => {
+    setAnchorEl(event.currentTarget);
+    setMenuBoxId(boxId);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setMenuBoxId('');
   };
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ p: 3, pb: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-          策略设置
-        </Typography>
-        <Button
-          variant="contained"
-          fullWidth
-          startIcon={<AddIcon />}
-          onClick={() => openDialog()}
+    <Box
+      sx={{
+        minHeight: '100%',
+        p: 2,
+        backgroundImage: inspirationBgImage ? `url(${inspirationBgImage})` : 'none',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+      }}
+    >
+      {/* 半透遮罩 */}
+      {inspirationBgImage && (
+        <Box
           sx={{
-            py: 1.2,
-            textTransform: 'none',
-            fontSize: '0.95rem',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            bgcolor: 'rgba(255, 255, 255, 0.75)',
+            backdropFilter: 'blur(2px)',
+            zIndex: 0,
+          }}
+        />
+      )}
+
+      <Stack spacing={2} sx={{ position: 'relative', zIndex: 1 }}>
+        {/* 头部：设置按钮 */}
+        <Stack direction="row" justifyContent="flex-end">
+          <IconButton
+            onClick={() => setSettingsOpen(true)}
+            sx={{
+              bgcolor: 'rgba(255,255,255,0.8)',
+              backdropFilter: 'blur(8px)',
+              boxShadow: 1,
+              '&:hover': { bgcolor: 'white' },
+            }}
+          >
+            <SettingsIcon />
+          </IconButton>
+        </Stack>
+
+        {/* 框框选项卡区域 */}
+        <Paper
+          elevation={2}
+          sx={{
+            borderRadius: 4,
+            overflow: 'hidden',
+            bgcolor: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
           }}
         >
-          添加新策略
-        </Button>
-      </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: 1, borderColor: 'divider' }}>
+            <Tabs
+              value={activeBoxId}
+              onChange={(_, val) => setActiveBoxId(val)}
+              variant="scrollable"
+              scrollButtons="auto"
+              sx={{
+                flex: 1,
+                '& .MuiTab-root': {
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  fontSize: '0.9rem',
+                  minHeight: 56,
+                },
+                '& .Mui-selected': {
+                  color: 'primary.main',
+                },
+              }}
+            >
+              {boxes.map(box => (
+                <Tab
+                  key={box.id}
+                  value={box.id}
+                  label={box.name}
+                  sx={{
+                    maxWidth: 'none',
+                  }}
+                />
+              ))}
+            </Tabs>
+            <IconButton onClick={addNewBox} sx={{ mx: 1 }}>
+              <AddIcon />
+            </IconButton>
+          </Box>
 
-      <Divider />
-
-      <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>
-        <Stack spacing={1.5}>
-          {strategies.map((strategy) => {
-            const Icon = getStrategyIcon(strategy.title);
-            return (
-              <Card
-                key={strategy.id}
-                sx={{
-                  p: 2,
-                  transition: 'all 0.2s',
-                  '&:hover': {
-                    boxShadow: 3,
-                  },
-                }}
+          {/* 当前框框的操作栏 */}
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ px: 2, py: 1.5, bgcolor: 'rgba(0,0,0,0.02)' }}
+          >
+            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+              {activeBox.name}
+            </Typography>
+            <Stack direction="row" spacing={1}>
+              <IconButton size="small" onClick={() => openRenameDialog(activeBoxId)}>
+                <EditIcon fontSize="small" />
+              </IconButton>
+              <IconButton
+                size="small"
+                onClick={(e) => handleMenuOpen(e, activeBoxId)}
+                disabled={boxes.length === 1}
               >
-                <Stack spacing={1}>
-                  <Stack
-                    direction="row"
-                    alignItems="center"
-                    justifyContent="space-between"
-                  >
-                    <Stack direction="row" alignItems="center" spacing={1} flex={1}>
-                      <Icon sx={{ fontSize: 20, color: 'primary.main' }} />
-                      <Typography
-                        variant="subtitle2"
-                        sx={{ fontWeight: 600, flex: 1 }}
-                      >
-                        {strategy.title}
-                      </Typography>
-                      {strategy.content && (
-                        <IconButton
-                          size="small"
-                          onClick={() => toggleExpanded(strategy.id)}
-                        >
-                          {strategy.expanded ? (
-                            <ExpandLessIcon fontSize="small" />
-                          ) : (
-                            <ExpandMoreIcon fontSize="small" />
-                          )}
-                        </IconButton>
-                      )}
-                    </Stack>
-                  </Stack>
-
-                  <Collapse in={strategy.expanded}>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}
-                    >
-                      {strategy.content}
-                    </Typography>
-                  </Collapse>
-
-                  <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                    <IconButton
-                      size="small"
-                      onClick={() => openDialog(strategy)}
-                      sx={{ color: 'text.secondary' }}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => deleteStrategy(strategy.id)}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Stack>
-                </Stack>
-              </Card>
-            );
-          })}
-
-          {strategies.length === 0 && (
-            <Box sx={{ py: 6, textAlign: 'center' }}>
-              <ScheduleIcon
-                sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }}
-              />
-              <Typography variant="body2" color="text.secondary">
-                暂无策略
-              </Typography>
-              <Typography variant="caption" color="text.disabled">
-                点击上方按钮添加策略
-              </Typography>
-            </Box>
-          )}
-        </Stack>
-      </Box>
-
-      <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 600 }}>
-          {editingStrategy ? '编辑策略' : '添加策略'}
-        </DialogTitle>
-        <DialogContent>
-          <Stack spacing={2.5} sx={{ mt: 1 }}>
-            <TextField
-              label="策略名称"
-              placeholder="例如：健康策略、饮食策略"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              fullWidth
-              required
-            />
-            <TextField
-              label="策略内容"
-              placeholder="输入策略的详细内容..."
-              value={formData.content}
-              onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-              fullWidth
-              multiline
-              rows={6}
-            />
+                <DeleteIcon fontSize="small" color={boxes.length === 1 ? 'disabled' : 'error'} />
+              </IconButton>
+            </Stack>
           </Stack>
+
+          {/* 待办列表区域 */}
+          <Box sx={{ p: 2 }}>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={addItem}
+              fullWidth
+              sx={{
+                mb: 2,
+                borderRadius: 40,
+                textTransform: 'none',
+                bgcolor: 'primary.main',
+                '&:hover': { bgcolor: 'primary.dark' },
+              }}
+            >
+              添加待办项
+            </Button>
+
+            <Stack spacing={1.5}>
+              {activeBox.items.length > 0 ? (
+                activeBox.items.map((item) => (
+                  <Paper
+                    key={item.id}
+                    elevation={0}
+                    sx={{
+                      p: 1.5,
+                      borderRadius: 3,
+                      bgcolor: 'background.paper',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        boxShadow: 2,
+                        borderColor: 'primary.main',
+                      },
+                    }}
+                  >
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Checkbox
+                        checked={item.completed}
+                        onChange={() => toggleItem(item.id)}
+                        size="medium"
+                        sx={{ color: 'primary.main', '&.Mui-checked': { color: 'primary.main' } }}
+                      />
+                      <TextField
+                        fullWidth
+                        value={item.content}
+                        onChange={(e) => updateItem(item.id, e.target.value)}
+                        placeholder="输入内容..."
+                        variant="standard"
+                        size="small"
+                        sx={{
+                          '& .MuiInput-root': {
+                            fontSize: '0.95rem',
+                            textDecoration: item.completed ? 'line-through' : 'none',
+                            opacity: item.completed ? 0.6 : 1,
+                          },
+                          '& .MuiInput-root:before, & .MuiInput-root:after': {
+                            borderBottom: 'none',
+                          },
+                        }}
+                      />
+                      <IconButton size="small" onClick={() => deleteItem(item.id)} sx={{ color: 'error.main' }}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
+                  </Paper>
+                ))
+              ) : (
+                <Box
+                  sx={{
+                    py: 6,
+                    textAlign: 'center',
+                    borderRadius: 3,
+                    bgcolor: 'rgba(0,0,0,0.02)',
+                    border: '1px dashed',
+                    borderColor: 'divider',
+                  }}
+                >
+                  <Typography variant="body2" color="text.secondary">
+                    暂无待办项，点击上方按钮添加
+                  </Typography>
+                </Box>
+              )}
+            </Stack>
+          </Box>
+        </Paper>
+      </Stack>
+
+      {/* 重命名对话框 */}
+      <Dialog open={renameDialogOpen} onClose={() => setRenameDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogContent sx={{ pt: 3 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+            重命名框框
+          </Typography>
+          <TextField
+            fullWidth
+            label="名称"
+            value={newBoxName}
+            onChange={(e) => setNewBoxName(e.target.value)}
+            autoFocus
+          />
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={closeDialog} sx={{ textTransform: 'none' }}>
+        <DialogActions sx={{ pb: 3, px: 3 }}>
+          <Button onClick={() => setRenameDialogOpen(false)} sx={{ textTransform: 'none' }}>
             取消
           </Button>
-          <Button
-            onClick={saveStrategy}
-            variant="contained"
-            disabled={!formData.title.trim()}
-            sx={{ textTransform: 'none' }}
-          >
+          <Button onClick={saveRename} variant="contained" disabled={!newBoxName.trim()} sx={{ textTransform: 'none' }}>
             保存
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* 删除确认菜单 */}
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
+        <MenuItem
+          onClick={() => {
+            deleteBox(menuBoxId);
+            handleMenuClose();
+          }}
+          sx={{ color: 'error.main' }}
+        >
+          <DeleteIcon fontSize="small" sx={{ mr: 1 }} /> 删除此框框
+        </MenuItem>
+      </Menu>
+
+      {/* 背景设置弹窗 */}
+      <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} fullWidth maxWidth="sm">
+        <DialogContent sx={{ pt: 3 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>
+            🎨 背景设置
+          </Typography>
+          <Stack spacing={3}>
+            <Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5 }}>
+                灵感列表背景图片
+              </Typography>
+              <Button
+                variant="outlined"
+                component="label"
+                fullWidth
+                startIcon={<AddIcon />}
+                sx={{ textTransform: 'none', borderRadius: 40 }}
+              >
+                {inspirationBgImage ? '更换图片' : '上传图片'}
+                <input type="file" hidden accept="image/*" onChange={handleBgUpload} />
+              </Button>
+              {inspirationBgImage && (
+                <Box
+                  sx={{
+                    mt: 2,
+                    height: 120,
+                    borderRadius: 3,
+                    backgroundImage: `url(${inspirationBgImage})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    border: '1px solid #e0e0e0',
+                  }}
+                />
+              )}
+            </Box>
+            <Button
+              variant="contained"
+              onClick={() => setSettingsOpen(false)}
+              sx={{ textTransform: 'none', borderRadius: 40 }}
+            >
+              完成
+            </Button>
+          </Stack>
+        </DialogContent>
       </Dialog>
     </Box>
   );
