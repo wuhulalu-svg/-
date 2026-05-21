@@ -1,3 +1,4 @@
+import React from 'react';
 import {
   Dialog,
   DialogContent,
@@ -221,5 +222,3 @@ export default function TimePickerDialog({
     </Dialog>
   );
 }
-
-import React from 'react';
