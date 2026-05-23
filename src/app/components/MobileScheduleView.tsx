@@ -8,95 +8,7 @@ import {
   ChevronLeft, ChevronRight, CalendarToday as CalendarIcon, Info as InfoIcon,
 } from '@mui/icons-material';
 
-// ---------- 圆形钟表组件（不变） ----------
-function ClockPicker({ value, onChange }: { value: { hour: number; minute: number; period: 'AM' | 'PM' }; onChange: (t: any) => void }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const size = 220;
-  const center = size / 2;
-  const radius = size * 0.4;
-
-  useEffect(() => {
-    drawClock();
-  }, [value]);
-
-  const drawClock = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.clearRect(0, 0, size, size);
-    ctx.beginPath();
-    ctx.arc(center, center, radius, 0, 2 * Math.PI);
-    ctx.fillStyle = '#fef9e6';
-    ctx.fill();
-    ctx.strokeStyle = '#d4a373';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    for (let i = 1; i <= 12; i++) {
-      let angle = (i * 30 - 90) * Math.PI / 180;
-      let x = center + radius * 0.82 * Math.cos(angle);
-      let y = center + radius * 0.82 * Math.sin(angle);
-      ctx.fillStyle = '#5e3a1c';
-      ctx.font = 'bold 18px "Segoe UI"';
-      ctx.fillText(i.toString(), x - 7, y + 7);
-    }
-    let hourAngle = ((value.hour % 12) * 30 + value.minute * 0.5 - 90) * Math.PI / 180;
-    ctx.beginPath();
-    ctx.moveTo(center, center);
-    ctx.lineTo(center + radius * 0.5 * Math.cos(hourAngle), center + radius * 0.5 * Math.sin(hourAngle));
-    ctx.lineWidth = 5;
-    ctx.strokeStyle = '#6366f1';
-    ctx.stroke();
-    let minuteAngle = (value.minute * 6 - 90) * Math.PI / 180;
-    ctx.beginPath();
-    ctx.moveTo(center, center);
-    ctx.lineTo(center + radius * 0.75 * Math.cos(minuteAngle), center + radius * 0.75 * Math.sin(minuteAngle));
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = '#ec4899';
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(center, center, 6, 0, 2 * Math.PI);
-    ctx.fillStyle = '#333';
-    ctx.fill();
-  };
-
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const rect = canvasRef.current!.getBoundingClientRect();
-    const scaleX = canvasRef.current!.width / rect.width;
-    const scaleY = canvasRef.current!.height / rect.height;
-    const mouseX = (e.clientX - rect.left) * scaleX;
-    const mouseY = (e.clientY - rect.top) * scaleY;
-    const dx = mouseX - center;
-    const dy = mouseY - center;
-    const dist = Math.hypot(dx, dy);
-    if (dist > radius) return;
-    let angle = Math.atan2(dy, dx) + Math.PI/2;
-    if (angle < 0) angle += 2*Math.PI;
-    let hour = Math.round(angle / (Math.PI/6)) % 12;
-    if (hour === 0) hour = 12;
-    let minute = Math.floor((dist / radius) * 60);
-    minute = Math.min(59, Math.max(0, minute));
-    onChange({ ...value, hour, minute });
-  };
-
-  const togglePeriod = () => {
-    onChange({ ...value, period: value.period === 'AM' ? 'PM' : 'AM' });
-  };
-
-  return (
-    <Stack alignItems="center" spacing={1}>
-      <canvas ref={canvasRef} width={size} height={size} onClick={handleCanvasClick} style={{ cursor: 'pointer', borderRadius: '50%', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-      <Button variant="outlined" size="small" onClick={togglePeriod} sx={{ minWidth: 100 }}>
-        切换 {value.period === 'AM' ? '上午 → 下午' : '下午 → 上午'}
-      </Button>
-      <Typography variant="body2" color="text.secondary">
-        当前：{value.hour}:{value.minute.toString().padStart(2,'0')} {value.period}
-      </Typography>
-    </Stack>
-  );
-}
-
-// ---------- 图片编辑器（竖屏预览，拖拽/缩放/透明度只影响图片） ----------
+// ---------- 图片编辑器（支持触摸拖动和滑块缩放） ----------
 function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50, initialPosY = 50, initialOpacity = 100 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -107,7 +19,7 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
   const [isDragging, setIsDragging] = useState(false);
   const lastPos = useRef({ x: 0, y: 0 });
 
-  // 绘制图片到 Canvas，透明度只在此生效（不影响页面内容）
+  // 绘制图片
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -131,19 +43,20 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
     };
   }, [imageUrl, scale, posX, opacity]);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  // 通用拖动逻辑（支持鼠标和触摸）
+  const startDrag = (clientX, clientY) => {
     setIsDragging(true);
-    lastPos.current = { x: e.clientX, y: e.clientY };
+    lastPos.current = { x: clientX, y: clientY };
   };
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const onDrag = (clientX, clientY) => {
     if (!isDragging) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-    const deltaX = (e.clientX - lastPos.current.x) * scaleX;
-    const deltaY = (e.clientY - lastPos.current.y) * scaleY;
+    const deltaX = (clientX - lastPos.current.x) * scaleX;
+    const deltaY = (clientY - lastPos.current.y) * scaleY;
     const w = canvas.width;
     const h = canvas.height;
     const scaleVal = scale / 100;
@@ -157,33 +70,61 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
     newPosY = Math.min(100, Math.max(0, newPosY));
     setPosX(newPosX);
     setPosY(newPosY);
-    lastPos.current = { x: e.clientX, y: e.clientY };
+    lastPos.current = { x: clientX, y: clientY };
     onUpdate({ scale, posX: newPosX, posY: newPosY, opacity });
   };
-  const handleMouseUp = () => setIsDragging(false);
-  const handleWheel = (e: React.WheelEvent) => {
-    const delta = e.deltaY > 0 ? -5 : 5;
-    const newScale = Math.min(200, Math.max(50, scale + delta));
-    setScale(newScale);
-    onUpdate({ scale: newScale, posX, posY, opacity });
+  const endDrag = () => setIsDragging(false);
+
+  // 鼠标事件
+  const handleMouseDown = (e) => startDrag(e.clientX, e.clientY);
+  const handleMouseMove = (e) => onDrag(e.clientX, e.clientY);
+  const handleMouseUp = () => endDrag();
+
+  // 触摸事件（手机）
+  const handleTouchStart = (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    startDrag(touch.clientX, touch.clientY);
   };
-  const handleOpacitySlider = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newOpacity = Number(e.target.value);
-    setOpacity(newOpacity);
-    onUpdate({ scale, posX, posY, opacity: newOpacity });
+  const handleTouchMove = (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    onDrag(touch.clientX, touch.clientY);
   };
-  const handleScaleSlider = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleTouchEnd = (e) => {
+    e.preventDefault();
+    endDrag();
+  };
+
+  // 缩放滑块
+  const handleScaleSlider = (e) => {
     const newScale = Number(e.target.value);
     setScale(newScale);
     onUpdate({ scale: newScale, posX, posY, opacity });
   };
+  const handleOpacitySlider = (e) => {
+    const newOpacity = Number(e.target.value);
+    setOpacity(newOpacity);
+    onUpdate({ scale, posX, posY, opacity: newOpacity });
+  };
 
   return (
     <Box>
-      <Box ref={containerRef} sx={{ width: 300, height: 400, margin: '0 auto', border: '1px solid #ccc', borderRadius: 2, overflow: 'hidden', cursor: 'grab' }}>
-        <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onWheel={handleWheel} />
+      <Box ref={containerRef} sx={{ width: 300, height: 400, margin: '0 auto', border: '1px solid #ccc', borderRadius: 2, overflow: 'hidden', touchAction: 'none' }}>
+        <canvas
+          ref={canvasRef}
+          style={{ width: '100%', height: '100%', display: 'block' }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        />
       </Box>
-      <Typography variant="caption" display="block" sx={{ mt: 1, textAlign: 'center' }}>鼠标拖拽移动图片，滚轮缩放</Typography>
+      <Typography variant="caption" display="block" sx={{ mt: 1, textAlign: 'center' }}>
+        手指拖动移动图片，下方滑块缩放/透明度
+      </Typography>
       <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
         <Box sx={{ flex: 1 }}>
           <Typography variant="caption">缩放 ({scale}%)</Typography>
@@ -198,6 +139,7 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
   );
 }
 
+// ---------- 计划数据接口 ----------
 interface Plan {
   id: string;
   startTime: string;
@@ -213,14 +155,15 @@ export default function MobileScheduleView() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
-  const [newPlanStart, setNewPlanStart] = useState({ hour: 9, minute: 0, period: 'AM' });
-  const [newPlanEnd, setNewPlanEnd] = useState({ hour: 10, minute: 0, period: 'AM' });
+  // 简单时间选择器（字符串格式 HH:MM）
+  const [newPlanStartTime, setNewPlanStartTime] = useState('09:00');
+  const [newPlanEndTime, setNewPlanEndTime] = useState('10:00');
   const [newPlanContent, setNewPlanContent] = useState('');
   const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState('');
 
-  // 背景设置（独立图层，不影响内容）
+  // 背景设置状态
   const [globalBg, setGlobalBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
   const [headerBg, setHeaderBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
   const [planBoxBg, setPlanBoxBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
@@ -258,7 +201,7 @@ export default function MobileScheduleView() {
     reader.readAsDataURL(file);
   };
 
-  // 监听加号事件
+  // 监听底部加号事件
   useEffect(() => {
     const handleOpenDialog = () => setDialogOpen(true);
     window.addEventListener('openAddPlanDialog', handleOpenDialog);
@@ -270,12 +213,10 @@ export default function MobileScheduleView() {
 
   const addPlan = () => {
     if (!newPlanContent.trim()) return;
-    const startStr = `${newPlanStart.hour}:${newPlanStart.minute.toString().padStart(2,'0')} ${newPlanStart.period}`;
-    const endStr = `${newPlanEnd.hour}:${newPlanEnd.minute.toString().padStart(2,'0')} ${newPlanEnd.period}`;
     const newPlan: Plan = {
       id: Date.now().toString(),
-      startTime: startStr,
-      endTime: endStr,
+      startTime: newPlanStartTime,
+      endTime: newPlanEndTime,
       content: newPlanContent,
       completed: false,
     };
@@ -319,7 +260,7 @@ export default function MobileScheduleView() {
 
   return (
     <Box sx={{ position: 'relative', minHeight: '100%' }}>
-      {/* 整体背景层（独立，透明度只影响图片） */}
+      {/* 整体背景层 */}
       {globalBg.url && (
         <Box
           sx={{
@@ -338,7 +279,7 @@ export default function MobileScheduleView() {
         />
       )}
       <Box sx={{ position: 'relative', zIndex: 1 }}>
-        {/* 头部区域背景层 */}
+        {/* 头部区域背景 */}
         <Box
           sx={{
             backgroundImage: headerBg.url ? `url(${headerBg.url})` : 'none',
@@ -415,19 +356,42 @@ export default function MobileScheduleView() {
           </Card>
         </Box>
 
-        {/* 添加计划对话框 */}
+        {/* 添加计划对话框 - 简单时间选择器 */}
         <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
           <DialogContent>
-            <Typography variant="h6" fontWeight={700} mb={2}>📅 添加计划</Typography>
-            <Stack spacing={3}>
-              <Typography variant="subtitle2">开始时间</Typography>
-              <ClockPicker value={newPlanStart} onChange={setNewPlanStart} />
-              <Typography variant="subtitle2">结束时间</Typography>
-              <ClockPicker value={newPlanEnd} onChange={setNewPlanEnd} />
-              <TextField multiline rows={3} label="计划内容" value={newPlanContent} onChange={e => setNewPlanContent(e.target.value)} fullWidth />
+            <Typography variant="h6" fontWeight={700} mb={3}>📅 添加计划</Typography>
+            <Stack spacing={2.5}>
+              <Stack direction="row" spacing={2} alignItems="center">
+                <TextField
+                  type="time"
+                  label="开始时间"
+                  value={newPlanStartTime}
+                  onChange={(e) => setNewPlanStartTime(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  sx={{ flex: 1 }}
+                />
+                <Typography variant="body2" color="text.secondary">—</Typography>
+                <TextField
+                  type="time"
+                  label="结束时间"
+                  value={newPlanEndTime}
+                  onChange={(e) => setNewPlanEndTime(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  sx={{ flex: 1 }}
+                />
+              </Stack>
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
+                label="计划内容"
+                placeholder="输入计划内容..."
+                value={newPlanContent}
+                onChange={(e) => setNewPlanContent(e.target.value)}
+              />
               <Stack direction="row" spacing={2}>
-                <Button variant="outlined" onClick={() => setDialogOpen(false)} sx={{ flex: 1 }}>取消</Button>
-                <Button variant="contained" onClick={addPlan} disabled={!newPlanContent.trim()} sx={{ flex: 1 }}>添加</Button>
+                <Button variant="outlined" onClick={() => setDialogOpen(false)} sx={{ flex: 1, textTransform: 'none' }}>取消</Button>
+                <Button variant="contained" onClick={addPlan} disabled={!newPlanContent.trim()} sx={{ flex: 1, textTransform: 'none' }}>添加</Button>
               </Stack>
             </Stack>
           </DialogContent>
@@ -437,7 +401,12 @@ export default function MobileScheduleView() {
         <Dialog open={datePickerOpen} onClose={() => setDatePickerOpen(false)} maxWidth="xs" fullWidth>
           <DialogContent>
             <Typography variant="h6" mb={2}>选择日期</Typography>
-            <input type="date" value={selectedDate.toISOString().split('T')[0]} onChange={e => selectSpecificDate(new Date(e.target.value))} style={{ width: '100%', padding: 12, fontSize: 16, borderRadius: 8, border: '1px solid #ccc' }} />
+            <input
+              type="date"
+              value={selectedDate.toISOString().split('T')[0]}
+              onChange={(e) => selectSpecificDate(new Date(e.target.value))}
+              style={{ width: '100%', padding: 12, fontSize: 16, borderRadius: 8, border: '1px solid #ccc' }}
+            />
             <Button fullWidth variant="contained" sx={{ mt: 2 }} onClick={() => setDatePickerOpen(false)}>确定</Button>
           </DialogContent>
         </Dialog>
@@ -446,7 +415,7 @@ export default function MobileScheduleView() {
         <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="md" fullWidth>
           <DialogContent>
             <Typography variant="h6" fontWeight={700} mb={2}>⚙️ 背景设置</Typography>
-            
+
             <Typography variant="subtitle2" sx={{ mt: 2 }}>🌍 整体背景</Typography>
             {globalBg.url ? (
               <ImageEditor
