@@ -23,7 +23,7 @@ import {
   Delete as DeleteIcon,
   Edit as EditIcon,
   Settings as SettingsIcon,
-  MoreVert as MoreVertIcon,
+  Info as InfoIcon,
 } from '@mui/icons-material';
 
 interface Item {
@@ -50,6 +50,7 @@ export default function InspirationView() {
   const [newBoxName, setNewBoxName] = useState('');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [menuBoxId, setMenuBoxId] = useState('');
+  const [infoDialogOpen, setInfoDialogOpen] = useState(false);
 
   useEffect(() => {
     const savedBoxes = localStorage.getItem('inspirationBoxes');
@@ -200,7 +201,7 @@ export default function InspirationView() {
     <Box
       sx={{
         minHeight: '100%',
-        p: 1.5, // 缩小外边距
+        p: 1.5,
         backgroundImage: inspirationBgImage ? `url(${inspirationBgImage})` : 'none',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
@@ -223,11 +224,23 @@ export default function InspirationView() {
       )}
 
       <Stack spacing={1.5} sx={{ position: 'relative', zIndex: 1 }}>
-        {/* 头部设置按钮 */}
-        <Stack direction="row" justifyContent="flex-end">
+        {/* 头部：设置按钮 + 感叹号 */}
+        <Stack direction="row" justifyContent="flex-end" spacing={1}>
           <IconButton
-            onClick={() => setSettingsOpen(true)}
             size="small"
+            onClick={() => setInfoDialogOpen(true)}
+            sx={{
+              bgcolor: 'rgba(255,255,255,0.8)',
+              backdropFilter: 'blur(8px)',
+              boxShadow: 1,
+              '&:hover': { bgcolor: 'white' },
+            }}
+          >
+            <InfoIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={() => setSettingsOpen(true)}
             sx={{
               bgcolor: 'rgba(255,255,255,0.8)',
               backdropFilter: 'blur(8px)',
@@ -276,7 +289,7 @@ export default function InspirationView() {
             </IconButton>
           </Box>
 
-          {/* 当前框框的操作栏（更紧凑） */}
+          {/* 当前框框的操作栏 */}
           <Stack
             direction="row"
             alignItems="center"
@@ -300,27 +313,8 @@ export default function InspirationView() {
             </Stack>
           </Stack>
 
-          {/* 待办列表区域（缩小间距） */}
+          {/* 待办列表区域（已删除添加按钮） */}
           <Box sx={{ p: 1.5 }}>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={addItemToActiveBox}
-              fullWidth
-              size="small"
-              sx={{
-                mb: 1.5,
-                borderRadius: 40,
-                textTransform: 'none',
-                bgcolor: 'primary.main',
-                '&:hover': { bgcolor: 'primary.dark' },
-                py: 0.8,
-                fontSize: '0.8rem',
-              }}
-            >
-              添加待办项
-            </Button>
-
             <Stack spacing={1}>
               {activeBox.items.length > 0 ? (
                 activeBox.items.map((item) => (
@@ -378,7 +372,7 @@ export default function InspirationView() {
                   }}
                 >
                   <Typography variant="caption" color="text.secondary">
-                    暂无待办项，点击上方按钮添加
+                    暂无待办项，点击底部加号添加
                   </Typography>
                 </Box>
               )}
@@ -390,16 +384,8 @@ export default function InspirationView() {
       {/* 重命名对话框 */}
       <Dialog open={renameDialogOpen} onClose={() => setRenameDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogContent sx={{ pt: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-            重命名框框
-          </Typography>
-          <TextField
-            fullWidth
-            label="名称"
-            value={newBoxName}
-            onChange={(e) => setNewBoxName(e.target.value)}
-            autoFocus
-          />
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>重命名框框</Typography>
+          <TextField fullWidth label="名称" value={newBoxName} onChange={(e) => setNewBoxName(e.target.value)} autoFocus />
         </DialogContent>
         <DialogActions sx={{ pb: 3, px: 3 }}>
           <Button onClick={() => setRenameDialogOpen(false)} sx={{ textTransform: 'none' }}>取消</Button>
@@ -413,6 +399,29 @@ export default function InspirationView() {
           <DeleteIcon fontSize="small" sx={{ mr: 1 }} /> 删除此框框
         </MenuItem>
       </Menu>
+
+      {/* 功能介绍弹窗 */}
+      <Dialog open={infoDialogOpen} onClose={() => setInfoDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogContent sx={{ pt: 3 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>💡 灵感是什么？</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+            灵感就是记录你脑海中一闪而过的想法、想尝试的事物、怕忘记的点子。
+            <br /><br />
+            比如：
+            <br />
+            • 我想试着做一道辣椒炒肉
+            <br />
+            • 周末去爬山的计划
+            <br />
+            • 一个有趣的短视频创意
+            <br /><br />
+            把灵感记在这里，避免遗忘，以后可以随时查看和执行。
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ pb: 3, px: 3 }}>
+          <Button onClick={() => setInfoDialogOpen(false)} variant="contained" sx={{ textTransform: 'none' }}>明白啦</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* 背景设置弹窗 */}
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} fullWidth maxWidth="sm">
