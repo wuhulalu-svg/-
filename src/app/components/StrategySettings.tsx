@@ -25,6 +25,7 @@ import {
   Psychology as PsychologyIcon,
   Schedule as ScheduleIcon,
   Settings as SettingsIcon,
+  Info as InfoIcon,
 } from '@mui/icons-material';
 
 interface Strategy {
@@ -59,6 +60,7 @@ export default function StrategySettings() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [infoDialogOpen, setInfoDialogOpen] = useState(false);
   const [editingStrategy, setEditingStrategy] = useState<StrategyWithExpanded | null>(null);
   const [formData, setFormData] = useState({ title: '', content: '' });
   const [strategyBgImage, setStrategyBgImage] = useState('');
@@ -148,21 +150,30 @@ export default function StrategySettings() {
 
   return (
     <Box>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => openDialog()}
+      <Stack direction="row" justifyContent="flex-end" spacing={1} mb={3}>
+        <IconButton
+          size="small"
+          onClick={() => setInfoDialogOpen(true)}
           sx={{
-            textTransform: 'none',
-            boxShadow: 2,
-            '&:hover': { boxShadow: 4 },
+            bgcolor: 'rgba(255,255,255,0.8)',
+            backdropFilter: 'blur(8px)',
+            boxShadow: 1,
+            '&:hover': { bgcolor: 'white' },
           }}
         >
-          添加策略
-        </Button>
-        <IconButton onClick={() => setSettingsOpen(true)}>
-          <SettingsIcon />
+          <InfoIcon fontSize="small" />
+        </IconButton>
+        <IconButton
+          size="small"
+          onClick={() => setSettingsOpen(true)}
+          sx={{
+            bgcolor: 'rgba(255,255,255,0.8)',
+            backdropFilter: 'blur(8px)',
+            boxShadow: 1,
+            '&:hover': { bgcolor: 'white' },
+          }}
+        >
+          <SettingsIcon fontSize="small" />
         </IconButton>
       </Stack>
 
@@ -234,18 +245,19 @@ export default function StrategySettings() {
           <Card sx={{ p: 8, textAlign: 'center', bgcolor: alpha('#6366f1', 0.02), border: '2px dashed', borderColor: 'divider' }}>
             <ScheduleIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
             <Typography variant="h6" color="text.secondary" gutterBottom>暂无策略</Typography>
-            <Typography variant="body2" color="text.disabled">点击上方按钮添加新策略</Typography>
+            <Typography variant="body2" color="text.disabled">点击底部加号添加新策略</Typography>
           </Card>
         )}
       </Stack>
 
+      {/* 添加/编辑策略对话框 */}
       <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="sm" fullWidth>
         <DialogTitle>{editingStrategy ? '编辑策略' : '添加策略'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
               label="策略名称"
-              placeholder="例如：健康策略、饮食策略"
+              placeholder="例如：养肤策略、健身计划"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               fullWidth
@@ -253,7 +265,7 @@ export default function StrategySettings() {
             />
             <TextField
               label="策略内容"
-              placeholder="输入策略的详细内容..."
+              placeholder="记录具体的方法、步骤或提醒..."
               value={formData.content}
               onChange={(e) => setFormData({ ...formData, content: e.target.value })}
               fullWidth
@@ -268,6 +280,30 @@ export default function StrategySettings() {
         </DialogActions>
       </Dialog>
 
+      {/* 功能介绍弹窗 */}
+      <Dialog open={infoDialogOpen} onClose={() => setInfoDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogContent sx={{ pt: 3 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>📚 策略是什么？</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+            策略是用来记录你想坚持的习惯、方法或行动计划，帮助你更好地管理自己。
+            <br /><br />
+            例如：
+            <br />
+            • 养肤策略：记录每天的护肤步骤、产品推荐
+            <br />
+            • 学习策略：制定复习计划、时间管理技巧
+            <br />
+            • 健康策略：运动计划、饮食搭配
+            <br /><br />
+            把策略记在这里，时刻提醒自己不要忘记，慢慢养成好习惯。
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ pb: 3, px: 3 }}>
+          <Button onClick={() => setInfoDialogOpen(false)} variant="contained" sx={{ textTransform: 'none' }}>明白啦</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 背景设置弹窗 */}
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} fullWidth maxWidth="sm">
         <DialogContent>
           <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>⚙️ 背景设置</Typography>
