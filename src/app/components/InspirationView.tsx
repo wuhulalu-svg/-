@@ -71,25 +71,19 @@ export default function InspirationView() {
 
   // 监听底部加号事件
   useEffect(() => {
-    const handleAddItem = () => {
-      addItemToActiveBox();
-    };
+    const handleAddItem = () => addItemToActiveBox();
     window.addEventListener('openAddInspirationItem', handleAddItem);
-    return () => {
-      window.removeEventListener('openAddInspirationItem', handleAddItem);
-    };
+    return () => window.removeEventListener('openAddInspirationItem', handleAddItem);
   }, [activeBoxId, boxes]);
 
   const addItemToActiveBox = () => {
-    setBoxes(boxes.map(box => {
-      if (box.id === activeBoxId) {
-        return {
-          ...box,
-          items: [...box.items, { id: Date.now().toString(), content: '', completed: false }],
-        };
-      }
-      return box;
-    }));
+    setBoxes((prev) =>
+      prev.map((box) =>
+        box.id === activeBoxId
+          ? { ...box, items: [...box.items, { id: Date.now().toString(), content: '', completed: false }] }
+          : box
+      )
+    );
   };
 
   const handleBgUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,27 +101,21 @@ export default function InspirationView() {
 
   const addNewBox = () => {
     const newId = Date.now().toString();
-    const newBox: ListBox = {
-      id: newId,
-      name: '未命名',
-      items: [],
-    };
+    const newBox: ListBox = { id: newId, name: '未命名', items: [] };
     setBoxes([...boxes, newBox]);
     setActiveBoxId(newId);
   };
 
   const deleteBox = (boxId: string) => {
     if (boxes.length === 1) return;
-    const newBoxes = boxes.filter(b => b.id !== boxId);
+    const newBoxes = boxes.filter((b) => b.id !== boxId);
     setBoxes(newBoxes);
-    if (activeBoxId === boxId) {
-      setActiveBoxId(newBoxes[0].id);
-    }
+    if (activeBoxId === boxId) setActiveBoxId(newBoxes[0].id);
     setAnchorEl(null);
   };
 
   const openRenameDialog = (boxId: string) => {
-    const box = boxes.find(b => b.id === boxId);
+    const box = boxes.find((b) => b.id === boxId);
     if (box) {
       setRenamingBoxId(boxId);
       setNewBoxName(box.name);
@@ -138,54 +126,49 @@ export default function InspirationView() {
 
   const saveRename = () => {
     if (!newBoxName.trim()) return;
-    setBoxes(boxes.map(b =>
-      b.id === renamingBoxId ? { ...b, name: newBoxName.trim() } : b
-    ));
+    setBoxes((prev) =>
+      prev.map((b) => (b.id === renamingBoxId ? { ...b, name: newBoxName.trim() } : b))
+    );
     setRenameDialogOpen(false);
     setNewBoxName('');
   };
 
   const updateItem = (itemId: string, content: string) => {
-    setBoxes(boxes.map(box => {
-      if (box.id === activeBoxId) {
-        return {
-          ...box,
-          items: box.items.map(item =>
-            item.id === itemId ? { ...item, content } : item
-          ),
-        };
-      }
-      return box;
-    }));
+    setBoxes((prev) =>
+      prev.map((box) =>
+        box.id === activeBoxId
+          ? { ...box, items: box.items.map((item) => (item.id === itemId ? { ...item, content } : item)) }
+          : box
+      )
+    );
   };
 
   const toggleItem = (itemId: string) => {
-    setBoxes(boxes.map(box => {
-      if (box.id === activeBoxId) {
-        return {
-          ...box,
-          items: box.items.map(item =>
-            item.id === itemId ? { ...item, completed: !item.completed } : item
-          ),
-        };
-      }
-      return box;
-    }));
+    setBoxes((prev) =>
+      prev.map((box) =>
+        box.id === activeBoxId
+          ? {
+              ...box,
+              items: box.items.map((item) =>
+                item.id === itemId ? { ...item, completed: !item.completed } : item
+              ),
+            }
+          : box
+      )
+    );
   };
 
   const deleteItem = (itemId: string) => {
-    setBoxes(boxes.map(box => {
-      if (box.id === activeBoxId) {
-        return {
-          ...box,
-          items: box.items.filter(item => item.id !== itemId),
-        };
-      }
-      return box;
-    }));
+    setBoxes((prev) =>
+      prev.map((box) =>
+        box.id === activeBoxId
+          ? { ...box, items: box.items.filter((item) => item.id !== itemId) }
+          : box
+      )
+    );
   };
 
-  const activeBox = boxes.find(b => b.id === activeBoxId) || boxes[0];
+  const activeBox = boxes.find((b) => b.id === activeBoxId) || boxes[0];
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, boxId: string) => {
     setAnchorEl(event.currentTarget);
@@ -224,29 +207,19 @@ export default function InspirationView() {
       )}
 
       <Stack spacing={1.5} sx={{ position: 'relative', zIndex: 1 }}>
-        {/* 头部：设置按钮 + 感叹号 */}
+        {/* 右上角按钮组 */}
         <Stack direction="row" justifyContent="flex-end" spacing={1}>
           <IconButton
             size="small"
             onClick={() => setInfoDialogOpen(true)}
-            sx={{
-              bgcolor: 'rgba(255,255,255,0.8)',
-              backdropFilter: 'blur(8px)',
-              boxShadow: 1,
-              '&:hover': { bgcolor: 'white' },
-            }}
+            sx={{ bgcolor: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(8px)', boxShadow: 1, '&:hover': { bgcolor: 'white' } }}
           >
             <InfoIcon fontSize="small" />
           </IconButton>
           <IconButton
             size="small"
             onClick={() => setSettingsOpen(true)}
-            sx={{
-              bgcolor: 'rgba(255,255,255,0.8)',
-              backdropFilter: 'blur(8px)',
-              boxShadow: 1,
-              '&:hover': { bgcolor: 'white' },
-            }}
+            sx={{ bgcolor: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(8px)', boxShadow: 1, '&:hover': { bgcolor: 'white' } }}
           >
             <SettingsIcon fontSize="small" />
           </IconButton>
@@ -268,19 +241,9 @@ export default function InspirationView() {
               onChange={(_, val) => setActiveBoxId(val)}
               variant="scrollable"
               scrollButtons="auto"
-              sx={{
-                flex: 1,
-                minHeight: 40,
-                '& .MuiTab-root': {
-                  textTransform: 'none',
-                  fontWeight: 500,
-                  fontSize: '0.8rem',
-                  minHeight: 40,
-                  py: 1,
-                },
-              }}
+              sx={{ flex: 1, minHeight: 40, '& .MuiTab-root': { textTransform: 'none', fontWeight: 500, fontSize: '0.8rem', minHeight: 40, py: 1 } }}
             >
-              {boxes.map(box => (
+              {boxes.map((box) => (
                 <Tab key={box.id} value={box.id} label={box.name} />
               ))}
             </Tabs>
@@ -290,12 +253,7 @@ export default function InspirationView() {
           </Box>
 
           {/* 当前框框的操作栏 */}
-          <Stack
-            direction="row"
-            alignItems="center"
-            justifyContent="space-between"
-            sx={{ px: 1.5, py: 1, bgcolor: 'rgba(0,0,0,0.02)' }}
-          >
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 1.5, py: 1, bgcolor: 'rgba(0,0,0,0.02)' }}>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
               {activeBox.name}
             </Typography>
@@ -313,7 +271,7 @@ export default function InspirationView() {
             </Stack>
           </Stack>
 
-          {/* 待办列表区域（已删除添加按钮） */}
+          {/* 待办列表区域（无独立添加按钮） */}
           <Box sx={{ p: 1.5 }}>
             <Stack spacing={1}>
               {activeBox.items.length > 0 ? (
@@ -321,21 +279,10 @@ export default function InspirationView() {
                   <Paper
                     key={item.id}
                     elevation={0}
-                    sx={{
-                      p: 1,
-                      borderRadius: 2,
-                      bgcolor: 'background.paper',
-                      border: '1px solid',
-                      borderColor: 'divider',
-                    }}
+                    sx={{ p: 1, borderRadius: 2, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}
                   >
                     <Stack direction="row" spacing={0.5} alignItems="center">
-                      <Checkbox
-                        checked={item.completed}
-                        onChange={() => toggleItem(item.id)}
-                        size="small"
-                        sx={{ p: 0.5 }}
-                      />
+                      <Checkbox checked={item.completed} onChange={() => toggleItem(item.id)} size="small" sx={{ p: 0.5 }} />
                       <TextField
                         fullWidth
                         value={item.content}
@@ -349,9 +296,7 @@ export default function InspirationView() {
                             textDecoration: item.completed ? 'line-through' : 'none',
                             opacity: item.completed ? 0.6 : 1,
                           },
-                          '& .MuiInput-root:before, & .MuiInput-root:after': {
-                            borderBottom: 'none',
-                          },
+                          '& .MuiInput-root:before, & .MuiInput-root:after': { borderBottom: 'none' },
                         }}
                       />
                       <IconButton size="small" onClick={() => deleteItem(item.id)} sx={{ p: 0.5 }}>
@@ -361,16 +306,7 @@ export default function InspirationView() {
                   </Paper>
                 ))
               ) : (
-                <Box
-                  sx={{
-                    py: 4,
-                    textAlign: 'center',
-                    borderRadius: 2,
-                    bgcolor: 'rgba(0,0,0,0.02)',
-                    border: '1px dashed',
-                    borderColor: 'divider',
-                  }}
-                >
+                <Box sx={{ py: 4, textAlign: 'center', borderRadius: 2, bgcolor: 'rgba(0,0,0,0.02)', border: '1px dashed', borderColor: 'divider' }}>
                   <Typography variant="caption" color="text.secondary">
                     暂无待办项，点击底部加号添加
                   </Typography>
