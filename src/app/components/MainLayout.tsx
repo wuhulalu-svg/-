@@ -127,7 +127,7 @@ export default function MainLayout() {
         </IconButton>
       </Box>
 
-      {/* 我的页面头部（只在设置视图显示） */}
+      {/* 我的页面头部 */}
       {selectedView === 'settings' && (
         <Box
           sx={{
@@ -164,7 +164,7 @@ export default function MainLayout() {
         </Box>
       )}
 
-      {/* 主要内容区域 */}
+      {/* 内容区域 */}
       <Box sx={{ flex: 1, overflowY: 'auto', pb: 9 }}>
         {selectedView === 'plan' && <MobileScheduleView />}
         {selectedView === 'schedule' && <InspirationView />}
