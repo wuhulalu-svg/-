@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Box, Typography, Stack, IconButton, Card, alpha, Dialog, DialogContent,
-  TextField, Button, Checkbox, Slide, Snackbar, Alert, Slider, Paper,
+  TextField, Button, Checkbox, Slide, Snackbar, Alert, Paper,
 } from '@mui/material';
 import {
   Settings as SettingsIcon, Delete as DeleteIcon, AccessTime as TimeIcon,
   ChevronLeft, ChevronRight, CalendarToday as CalendarIcon, Info as InfoIcon,
 } from '@mui/icons-material';
 
-// ---------- 圆形钟表组件 ----------
+// ---------- 圆形钟表组件（不变） ----------
 function ClockPicker({ value, onChange }: { value: { hour: number; minute: number; period: 'AM' | 'PM' }; onChange: (t: any) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const size = 220;
@@ -96,7 +96,7 @@ function ClockPicker({ value, onChange }: { value: { hour: number; minute: numbe
   );
 }
 
-// ---------- 可拖拽缩放图片编辑器（竖屏比例）----------
+// ---------- 图片编辑器（竖屏预览，拖拽/缩放/透明度只影响图片） ----------
 function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50, initialPosY = 50, initialOpacity = 100 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -107,7 +107,7 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
   const [isDragging, setIsDragging] = useState(false);
   const lastPos = useRef({ x: 0, y: 0 });
 
-  // 绘制预览（只画背景图片，不影响其他）
+  // 绘制图片到 Canvas，透明度只在此生效（不影响页面内容）
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -117,13 +117,9 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
     const img = new Image();
     img.src = imageUrl;
     img.onload = () => {
-      // 固定竖屏比例 3:4 (宽300，高400)
-      const w = 300;
-      const h = 400;
-      canvas.width = w;
-      canvas.height = h;
+      const w = canvas.width = container.clientWidth;
+      const h = canvas.height = container.clientHeight;
       ctx.clearRect(0, 0, w, h);
-      ctx.save();
       ctx.globalAlpha = opacity / 100;
       const scaleVal = scale / 100;
       const drawW = w * scaleVal;
@@ -131,7 +127,7 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
       const dx = (posX / 100) * (w - drawW);
       const dy = (posY / 100) * (h - drawH);
       ctx.drawImage(img, dx, dy, drawW, drawH);
-      ctx.restore();
+      ctx.globalAlpha = 1;
     };
   }, [imageUrl, scale, posX, opacity]);
 
@@ -143,6 +139,11 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
     if (!isDragging) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const deltaX = (e.clientX - lastPos.current.x) * scaleX;
+    const deltaY = (e.clientY - lastPos.current.y) * scaleY;
     const w = canvas.width;
     const h = canvas.height;
     const scaleVal = scale / 100;
@@ -150,8 +151,8 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
     const drawH = h * scaleVal;
     const maxDeltaX = (w - drawW) / 2;
     const maxDeltaY = (h - drawH) / 2;
-    let newPosX = posX + ((e.clientX - lastPos.current.x) / maxDeltaX) * 50;
-    let newPosY = posY + ((e.clientY - lastPos.current.y) / maxDeltaY) * 50;
+    let newPosX = posX + (deltaX / maxDeltaX) * 50;
+    let newPosY = posY + (deltaY / maxDeltaY) * 50;
     newPosX = Math.min(100, Math.max(0, newPosX));
     newPosY = Math.min(100, Math.max(0, newPosY));
     setPosX(newPosX);
@@ -166,7 +167,7 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
     setScale(newScale);
     onUpdate({ scale: newScale, posX, posY, opacity });
   };
-  const handleOpacityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleOpacitySlider = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newOpacity = Number(e.target.value);
     setOpacity(newOpacity);
     onUpdate({ scale, posX, posY, opacity: newOpacity });
@@ -179,19 +180,10 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
 
   return (
     <Box>
-      <Box ref={containerRef} sx={{ width: '100%', display: 'flex', justifyContent: 'center', mb: 2 }}>
-        <canvas
-          ref={canvasRef}
-          width="300"
-          height="400"
-          style={{ width: 300, height: 400, border: '1px solid #ccc', borderRadius: 8, cursor: 'grab' }}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onWheel={handleWheel}
-        />
+      <Box ref={containerRef} sx={{ width: 300, height: 400, margin: '0 auto', border: '1px solid #ccc', borderRadius: 2, overflow: 'hidden', cursor: 'grab' }}>
+        <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onWheel={handleWheel} />
       </Box>
-      <Typography variant="caption" display="block" sx={{ textAlign: 'center' }}>鼠标拖拽移动图片，滚轮缩放</Typography>
+      <Typography variant="caption" display="block" sx={{ mt: 1, textAlign: 'center' }}>鼠标拖拽移动图片，滚轮缩放</Typography>
       <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
         <Box sx={{ flex: 1 }}>
           <Typography variant="caption">缩放 ({scale}%)</Typography>
@@ -199,14 +191,13 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
         </Box>
         <Box sx={{ flex: 1 }}>
           <Typography variant="caption">透明度 ({opacity}%)</Typography>
-          <input type="range" min={0} max={100} step={1} value={opacity} onChange={handleOpacityChange} style={{ width: '100%' }} />
+          <input type="range" min={0} max={100} step={1} value={opacity} onChange={handleOpacitySlider} style={{ width: '100%' }} />
         </Box>
       </Stack>
     </Box>
   );
 }
 
-// ---------- 计划接口 ----------
 interface Plan {
   id: string;
   startTime: string;
@@ -229,7 +220,7 @@ export default function MobileScheduleView() {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState('');
 
-  // 背景设置状态
+  // 背景设置（独立图层，不影响内容）
   const [globalBg, setGlobalBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
   const [headerBg, setHeaderBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
   const [planBoxBg, setPlanBoxBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
@@ -249,13 +240,6 @@ export default function MobileScheduleView() {
     localStorage.setItem('dailyPlansV2', JSON.stringify(allPlans));
   }, [allPlans]);
 
-  // 监听添加计划事件（底部加号）
-  useEffect(() => {
-    const handleOpenDialog = () => setDialogOpen(true);
-    window.addEventListener('openAddPlanDialog', handleOpenDialog);
-    return () => window.removeEventListener('openAddPlanDialog', handleOpenDialog);
-  }, []);
-
   const updateBg = (type: 'global' | 'header' | 'planbox', newSettings: any) => {
     if (type === 'global') setGlobalBg(newSettings);
     else if (type === 'header') setHeaderBg(newSettings);
@@ -273,6 +257,13 @@ export default function MobileScheduleView() {
     };
     reader.readAsDataURL(file);
   };
+
+  // 监听加号事件
+  useEffect(() => {
+    const handleOpenDialog = () => setDialogOpen(true);
+    window.addEventListener('openAddPlanDialog', handleOpenDialog);
+    return () => window.removeEventListener('openAddPlanDialog', handleOpenDialog);
+  }, []);
 
   const dateKey = selectedDate.toISOString().split('T')[0];
   const plans = allPlans[dateKey] || [];
@@ -327,193 +318,186 @@ export default function MobileScheduleView() {
   });
 
   return (
-    <Box sx={{
-      minHeight: '100%',
-      backgroundImage: globalBg.url ? `url(${globalBg.url})` : 'none',
-      backgroundSize: `${globalBg.scale}%`,
-      backgroundPosition: `${globalBg.posX}% ${globalBg.posY}%`,
-      backgroundRepeat: 'no-repeat',
-      backgroundColor: '#FAFAFA',
-    }}>
-      {/* 头部区域背景（应用 opacity 时只影响背景层，文字卡片不受影响） */}
-      <Box sx={{
-        position: 'relative',
-        backgroundImage: headerBg.url ? `url(${headerBg.url})` : 'none',
-        backgroundSize: `${headerBg.scale}%`,
-        backgroundPosition: `${headerBg.posX}% ${headerBg.posY}%`,
-        p: 2,
-        borderBottom: '1px solid #f0f0f0',
-        bgcolor: 'white',
-        '&::before': headerBg.url ? {
-          content: '""',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: `rgba(255,255,255,${1 - headerBg.opacity / 100})`,
-          zIndex: 0,
-        } : {},
-      }}>
-        <Stack direction="row" justifyContent="flex-end" spacing={1} mb={2} sx={{ position: 'relative', zIndex: 1 }}>
-          <IconButton size="small" onClick={() => setInfoOpen(true)}><InfoIcon fontSize="small" /></IconButton>
-          <IconButton size="small" onClick={() => setSettingsOpen(true)}><SettingsIcon fontSize="small" /></IconButton>
-        </Stack>
-        <Stack direction="row" alignItems="center" spacing={1} sx={{ position: 'relative', zIndex: 1 }}>
-          <IconButton size="small" onClick={() => changeDate(-1)}><ChevronLeft /></IconButton>
-          <Box sx={{ flex: 1, textAlign: 'center' }}>
-            <Typography variant="h5" fontWeight={700} onClick={() => setDatePickerOpen(true)} sx={{ cursor: 'pointer' }}>
-              {selectedDate.getFullYear()}年{selectedDate.getMonth()+1}月{selectedDate.getDate()}日
-            </Typography>
-          </Box>
-          <IconButton size="small" onClick={() => changeDate(1)}><ChevronRight /></IconButton>
-        </Stack>
-        <Stack direction="row" spacing={1} justifyContent="space-between" mt={2} sx={{ position: 'relative', zIndex: 1 }}>
-          {dates.map((date, idx) => (
-            <Box key={idx} onClick={() => selectSpecificDate(date)} sx={{ textAlign: 'center', cursor: 'pointer' }}>
-              <Typography variant="caption">{weekDays[idx]}</Typography>
-              <Box sx={{
-                width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                bgcolor: date.toDateString() === selectedDate.toDateString() ? '#333' : 'transparent',
-                color: date.toDateString() === selectedDate.toDateString() ? 'white' : 'text.primary',
-              }}>
-                {date.getDate()}
-              </Box>
-            </Box>
-          ))}
-        </Stack>
-      </Box>
-
-      <Box sx={{ p: 2, bgcolor: 'white', borderBottom: '1px solid #f0f0f0' }}>
-        <Typography variant="subtitle1" fontWeight={700}>≡ 目标和分类</Typography>
-      </Box>
-
-      <Box sx={{ p: 2 }}>
-        <Card sx={{
-          position: 'relative',
-          backgroundImage: planBoxBg.url ? `url(${planBoxBg.url})` : 'none',
-          backgroundSize: `${planBoxBg.scale}%`,
-          backgroundPosition: `${planBoxBg.posX}% ${planBoxBg.posY}%`,
-          borderRadius: 3,
-          p: 2,
-          minHeight: 400,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          '&::before': planBoxBg.url ? {
-            content: '""',
-            position: 'absolute',
+    <Box sx={{ position: 'relative', minHeight: '100%' }}>
+      {/* 整体背景层（独立，透明度只影响图片） */}
+      {globalBg.url && (
+        <Box
+          sx={{
+            position: 'fixed',
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: `rgba(255,255,255,${1 - planBoxBg.opacity / 100})`,
-            borderRadius: 3,
+            backgroundImage: `url(${globalBg.url})`,
+            backgroundSize: `${globalBg.scale}%`,
+            backgroundPosition: `${globalBg.posX}% ${globalBg.posY}%`,
+            backgroundRepeat: 'no-repeat',
+            opacity: globalBg.opacity / 100,
             zIndex: 0,
-          } : {},
-        }}>
-          <Stack spacing={1.5} sx={{ position: 'relative', zIndex: 1 }}>
-            {plans.map(plan => (
-              <Paper key={plan.id} sx={{ p: 1.5, bgcolor: plan.completed ? alpha('#4caf50',0.1) : 'white', border: `1px solid ${plan.completed ? '#4caf50' : '#e0e0e0'}` }}>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Checkbox checked={plan.completed} onChange={() => togglePlan(plan.id)} size="small" />
-                  <Stack direction="row" spacing={1} alignItems="center" sx={{ bgcolor: alpha('#6366f1',0.1), px: 1, py: 0.5, borderRadius: 2 }}>
-                    <TimeIcon sx={{ fontSize: 14, color: 'primary.main' }} />
-                    <Typography variant="caption" fontWeight={600}>{plan.startTime} - {plan.endTime}</Typography>
-                  </Stack>
-                  <Typography sx={{ flex: 1, textDecoration: plan.completed ? 'line-through' : 'none', opacity: plan.completed ? 0.6 : 1 }}>{plan.content}</Typography>
-                  <IconButton size="small" onClick={() => deletePlan(plan.id)}><DeleteIcon fontSize="small" color="error" /></IconButton>
-                </Stack>
-              </Paper>
-            ))}
-            {plans.length === 0 && (
-              <Box sx={{ py: 8, textAlign: 'center', opacity: 0.5 }}>
-                <Typography variant="body2">点击底部加号添加计划</Typography>
+          }}
+        />
+      )}
+      <Box sx={{ position: 'relative', zIndex: 1 }}>
+        {/* 头部区域背景层 */}
+        <Box
+          sx={{
+            backgroundImage: headerBg.url ? `url(${headerBg.url})` : 'none',
+            backgroundSize: `${headerBg.scale}%`,
+            backgroundPosition: `${headerBg.posX}% ${headerBg.posY}%`,
+            p: 2,
+            borderBottom: '1px solid #f0f0f0',
+            bgcolor: 'white',
+          }}
+        >
+          <Stack direction="row" justifyContent="flex-end" spacing={1} mb={2}>
+            <IconButton size="small" onClick={() => setInfoOpen(true)}><InfoIcon fontSize="small" /></IconButton>
+            <IconButton size="small" onClick={() => setSettingsOpen(true)}><SettingsIcon fontSize="small" /></IconButton>
+          </Stack>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <IconButton size="small" onClick={() => changeDate(-1)}><ChevronLeft /></IconButton>
+            <Box sx={{ flex: 1, textAlign: 'center' }}>
+              <Typography variant="h5" fontWeight={700} onClick={() => setDatePickerOpen(true)} sx={{ cursor: 'pointer' }}>
+                {selectedDate.getFullYear()}年{selectedDate.getMonth()+1}月{selectedDate.getDate()}日
+              </Typography>
+            </Box>
+            <IconButton size="small" onClick={() => changeDate(1)}><ChevronRight /></IconButton>
+          </Stack>
+          <Stack direction="row" spacing={1} justifyContent="space-between" mt={2}>
+            {dates.map((date, idx) => (
+              <Box key={idx} onClick={() => selectSpecificDate(date)} sx={{ textAlign: 'center', cursor: 'pointer' }}>
+                <Typography variant="caption">{weekDays[idx]}</Typography>
+                <Box sx={{
+                  width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  bgcolor: date.toDateString() === selectedDate.toDateString() ? '#333' : 'transparent',
+                  color: date.toDateString() === selectedDate.toDateString() ? 'white' : 'text.primary',
+                }}>
+                  {date.getDate()}
+                </Box>
               </Box>
-            )}
+            ))}
           </Stack>
-        </Card>
-      </Box>
+        </Box>
 
-      {/* 添加计划对话框 - 钟表选择器 */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogContent>
-          <Typography variant="h6" fontWeight={700} mb={2}>📅 添加计划</Typography>
-          <Stack spacing={3}>
-            <Typography variant="subtitle2">开始时间</Typography>
-            <ClockPicker value={newPlanStart} onChange={setNewPlanStart} />
-            <Typography variant="subtitle2">结束时间</Typography>
-            <ClockPicker value={newPlanEnd} onChange={setNewPlanEnd} />
-            <TextField multiline rows={3} label="计划内容" value={newPlanContent} onChange={e => setNewPlanContent(e.target.value)} fullWidth />
-            <Stack direction="row" spacing={2}>
-              <Button variant="outlined" onClick={() => setDialogOpen(false)} sx={{ flex: 1 }}>取消</Button>
-              <Button variant="contained" onClick={addPlan} disabled={!newPlanContent.trim()} sx={{ flex: 1 }}>添加</Button>
+        <Box sx={{ p: 2, bgcolor: 'white', borderBottom: '1px solid #f0f0f0' }}>
+          <Typography variant="subtitle1" fontWeight={700}>≡ 目标和分类</Typography>
+        </Box>
+
+        <Box sx={{ p: 2 }}>
+          <Card sx={{
+            backgroundImage: planBoxBg.url ? `url(${planBoxBg.url})` : 'none',
+            backgroundSize: `${planBoxBg.scale}%`,
+            backgroundPosition: `${planBoxBg.posX}% ${planBoxBg.posY}%`,
+            borderRadius: 3,
+            p: 2,
+            minHeight: 400,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          }}>
+            <Stack spacing={1.5}>
+              {plans.map(plan => (
+                <Paper key={plan.id} sx={{ p: 1.5, bgcolor: plan.completed ? alpha('#4caf50',0.1) : 'white', border: `1px solid ${plan.completed ? '#4caf50' : '#e0e0e0'}` }}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Checkbox checked={plan.completed} onChange={() => togglePlan(plan.id)} size="small" />
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ bgcolor: alpha('#6366f1',0.1), px: 1, py: 0.5, borderRadius: 2 }}>
+                      <TimeIcon sx={{ fontSize: 14, color: 'primary.main' }} />
+                      <Typography variant="caption" fontWeight={600}>{plan.startTime} - {plan.endTime}</Typography>
+                    </Stack>
+                    <Typography sx={{ flex: 1, textDecoration: plan.completed ? 'line-through' : 'none', opacity: plan.completed ? 0.6 : 1 }}>{plan.content}</Typography>
+                    <IconButton size="small" onClick={() => deletePlan(plan.id)}><DeleteIcon fontSize="small" color="error" /></IconButton>
+                  </Stack>
+                </Paper>
+              ))}
+              {plans.length === 0 && (
+                <Box sx={{ py: 8, textAlign: 'center', opacity: 0.5 }}>
+                  <Typography variant="body2">点击底部加号添加计划</Typography>
+                </Box>
+              )}
             </Stack>
-          </Stack>
-        </DialogContent>
-      </Dialog>
+          </Card>
+        </Box>
 
-      {/* 日期选择对话框 */}
-      <Dialog open={datePickerOpen} onClose={() => setDatePickerOpen(false)} maxWidth="xs" fullWidth>
-        <DialogContent>
-          <Typography variant="h6" mb={2}>选择日期</Typography>
-          <input type="date" value={selectedDate.toISOString().split('T')[0]} onChange={e => selectSpecificDate(new Date(e.target.value))} style={{ width: '100%', padding: 12, fontSize: 16, borderRadius: 8, border: '1px solid #ccc' }} />
-          <Button fullWidth variant="contained" sx={{ mt: 2 }} onClick={() => setDatePickerOpen(false)}>确定</Button>
-        </DialogContent>
-      </Dialog>
+        {/* 添加计划对话框 */}
+        <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
+          <DialogContent>
+            <Typography variant="h6" fontWeight={700} mb={2}>📅 添加计划</Typography>
+            <Stack spacing={3}>
+              <Typography variant="subtitle2">开始时间</Typography>
+              <ClockPicker value={newPlanStart} onChange={setNewPlanStart} />
+              <Typography variant="subtitle2">结束时间</Typography>
+              <ClockPicker value={newPlanEnd} onChange={setNewPlanEnd} />
+              <TextField multiline rows={3} label="计划内容" value={newPlanContent} onChange={e => setNewPlanContent(e.target.value)} fullWidth />
+              <Stack direction="row" spacing={2}>
+                <Button variant="outlined" onClick={() => setDialogOpen(false)} sx={{ flex: 1 }}>取消</Button>
+                <Button variant="contained" onClick={addPlan} disabled={!newPlanContent.trim()} sx={{ flex: 1 }}>添加</Button>
+              </Stack>
+            </Stack>
+          </DialogContent>
+        </Dialog>
 
-      {/* 背景设置对话框 */}
-      <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="md" fullWidth>
-        <DialogContent>
-          <Typography variant="h6" fontWeight={700} mb={2}>⚙️ 背景设置</Typography>
-          {/* 整体背景 */}
-          <Typography variant="subtitle2" sx={{ mt: 2 }}>🌍 整体背景</Typography>
-          {globalBg.url ? (
-            <ImageEditor
-              imageUrl={globalBg.url}
-              onUpdate={(s) => updateBg('global', { ...globalBg, ...s })}
-              initialScale={globalBg.scale} initialPosX={globalBg.posX} initialPosY={globalBg.posY} initialOpacity={globalBg.opacity}
-            />
-          ) : (
-            <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }}>上传整体背景图片<input type="file" hidden accept="image/*" onChange={handleBgUpload('global')} /></Button>
-          )}
-          {/* 顶部区域背景 */}
-          <Typography variant="subtitle2" sx={{ mt: 3 }}>📌 顶部区域背景</Typography>
-          {headerBg.url ? (
-            <ImageEditor
-              imageUrl={headerBg.url}
-              onUpdate={(s) => updateBg('header', { ...headerBg, ...s })}
-              initialScale={headerBg.scale} initialPosX={headerBg.posX} initialPosY={headerBg.posY} initialOpacity={headerBg.opacity}
-            />
-          ) : (
-            <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }}>上传顶部背景图片<input type="file" hidden accept="image/*" onChange={handleBgUpload('header')} /></Button>
-          )}
-          {/* 计划列表背景 */}
-          <Typography variant="subtitle2" sx={{ mt: 3 }}>📋 计划列表背景</Typography>
-          {planBoxBg.url ? (
-            <ImageEditor
-              imageUrl={planBoxBg.url}
-              onUpdate={(s) => updateBg('planbox', { ...planBoxBg, ...s })}
-              initialScale={planBoxBg.scale} initialPosX={planBoxBg.posX} initialPosY={planBoxBg.posY} initialOpacity={planBoxBg.opacity}
-            />
-          ) : (
-            <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }}>上传列表背景图片<input type="file" hidden accept="image/*" onChange={handleBgUpload('planbox')} /></Button>
-          )}
-          <Button variant="contained" fullWidth sx={{ mt: 3 }} onClick={() => setSettingsOpen(false)}>完成</Button>
-        </DialogContent>
-      </Dialog>
+        {/* 日期选择对话框 */}
+        <Dialog open={datePickerOpen} onClose={() => setDatePickerOpen(false)} maxWidth="xs" fullWidth>
+          <DialogContent>
+            <Typography variant="h6" mb={2}>选择日期</Typography>
+            <input type="date" value={selectedDate.toISOString().split('T')[0]} onChange={e => selectSpecificDate(new Date(e.target.value))} style={{ width: '100%', padding: 12, fontSize: 16, borderRadius: 8, border: '1px solid #ccc' }} />
+            <Button fullWidth variant="contained" sx={{ mt: 2 }} onClick={() => setDatePickerOpen(false)}>确定</Button>
+          </DialogContent>
+        </Dialog>
 
-      {/* 功能介绍 */}
-      <Dialog open={infoOpen} onClose={() => setInfoOpen(false)}>
-        <DialogContent>
-          <Typography variant="h6" fontWeight={700}>📝 做计划</Typography>
-          <Typography variant="body2" sx={{ mt: 1 }}>记录每日任务，点击底部加号添加计划。勾选完成任务时有鼓励提示。</Typography>
-          <Button variant="contained" fullWidth sx={{ mt: 2 }} onClick={() => setInfoOpen(false)}>知道啦</Button>
-        </DialogContent>
-      </Dialog>
+        {/* 背景设置对话框 */}
+        <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="md" fullWidth>
+          <DialogContent>
+            <Typography variant="h6" fontWeight={700} mb={2}>⚙️ 背景设置</Typography>
+            
+            <Typography variant="subtitle2" sx={{ mt: 2 }}>🌍 整体背景</Typography>
+            {globalBg.url ? (
+              <ImageEditor
+                imageUrl={globalBg.url}
+                onUpdate={(s) => updateBg('global', { ...globalBg, ...s })}
+                initialScale={globalBg.scale} initialPosX={globalBg.posX} initialPosY={globalBg.posY} initialOpacity={globalBg.opacity}
+              />
+            ) : (
+              <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }}>上传整体背景图片<input type="file" hidden accept="image/*" onChange={handleBgUpload('global')} /></Button>
+            )}
 
-      {/* 完成任务提示 */}
-      <Snackbar open={snackbarOpen} autoHideDuration={2000} onClose={() => setSnackbarOpen(false)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert severity="success" sx={{ bgcolor: '#4caf50', color: 'white' }}>{snackbarMsg}</Alert>
-      </Snackbar>
+            <Typography variant="subtitle2" sx={{ mt: 3 }}>📌 顶部区域背景</Typography>
+            {headerBg.url ? (
+              <ImageEditor
+                imageUrl={headerBg.url}
+                onUpdate={(s) => updateBg('header', { ...headerBg, ...s })}
+                initialScale={headerBg.scale} initialPosX={headerBg.posX} initialPosY={headerBg.posY} initialOpacity={headerBg.opacity}
+              />
+            ) : (
+              <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }}>上传顶部背景图片<input type="file" hidden accept="image/*" onChange={handleBgUpload('header')} /></Button>
+            )}
+
+            <Typography variant="subtitle2" sx={{ mt: 3 }}>📋 计划列表背景</Typography>
+            {planBoxBg.url ? (
+              <ImageEditor
+                imageUrl={planBoxBg.url}
+                onUpdate={(s) => updateBg('planbox', { ...planBoxBg, ...s })}
+                initialScale={planBoxBg.scale} initialPosX={planBoxBg.posX} initialPosY={planBoxBg.posY} initialOpacity={planBoxBg.opacity}
+              />
+            ) : (
+              <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }}>上传列表背景图片<input type="file" hidden accept="image/*" onChange={handleBgUpload('planbox')} /></Button>
+            )}
+
+            <Button variant="contained" fullWidth sx={{ mt: 3 }} onClick={() => setSettingsOpen(false)}>完成</Button>
+          </DialogContent>
+        </Dialog>
+
+        {/* 功能介绍 */}
+        <Dialog open={infoOpen} onClose={() => setInfoOpen(false)}>
+          <DialogContent>
+            <Typography variant="h6" fontWeight={700}>📝 做计划</Typography>
+            <Typography variant="body2" sx={{ mt: 1 }}>记录每日任务，点击底部加号添加计划。勾选完成任务时有鼓励提示。</Typography>
+            <Button variant="contained" fullWidth sx={{ mt: 2 }} onClick={() => setInfoOpen(false)}>知道啦</Button>
+          </DialogContent>
+        </Dialog>
+
+        {/* 完成任务提示 */}
+        <Snackbar open={snackbarOpen} autoHideDuration={2000} onClose={() => setSnackbarOpen(false)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+          <Alert severity="success" sx={{ bgcolor: '#4caf50', color: 'white' }}>{snackbarMsg}</Alert>
+        </Snackbar>
+      </Box>
     </Box>
   );
 }
