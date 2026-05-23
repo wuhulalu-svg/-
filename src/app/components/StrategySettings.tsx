@@ -65,7 +65,6 @@ export default function StrategySettings() {
   const [formData, setFormData] = useState({ title: '', content: '' });
   const [strategyBgImage, setStrategyBgImage] = useState('');
 
-  // 打开添加/编辑策略对话框的函数
   const openDialog = useCallback((strategy?: StrategyWithExpanded) => {
     if (strategy) {
       setEditingStrategy(strategy);
@@ -77,15 +76,10 @@ export default function StrategySettings() {
     setDialogOpen(true);
   }, []);
 
-  // 监听底部加号事件
   useEffect(() => {
-    const handleOpenAddStrategy = () => {
-      openDialog(); // 添加新策略
-    };
+    const handleOpenAddStrategy = () => openDialog();
     window.addEventListener('openAddStrategyDialog', handleOpenAddStrategy);
-    return () => {
-      window.removeEventListener('openAddStrategyDialog', handleOpenAddStrategy);
-    };
+    return () => window.removeEventListener('openAddStrategyDialog', handleOpenAddStrategy);
   }, [openDialog]);
 
   useEffect(() => {
@@ -118,13 +112,10 @@ export default function StrategySettings() {
 
   const saveStrategy = () => {
     if (!formData.title.trim()) return;
-
     if (editingStrategy) {
-      setStrategies(strategies.map(s =>
-        s.id === editingStrategy.id
-          ? { ...s, title: formData.title, content: formData.content }
-          : s
-      ));
+      setStrategies((prev) =>
+        prev.map((s) => (s.id === editingStrategy.id ? { ...s, title: formData.title, content: formData.content } : s))
+      );
     } else {
       const newStrategy: StrategyWithExpanded = {
         id: Date.now().toString(),
@@ -132,20 +123,19 @@ export default function StrategySettings() {
         content: formData.content,
         expanded: false,
       };
-      setStrategies([...strategies, newStrategy]);
+      setStrategies((prev) => [...prev, newStrategy]);
     }
-
     closeDialog();
   };
 
   const deleteStrategy = (id: string) => {
-    setStrategies(strategies.filter(s => s.id !== id));
+    setStrategies((prev) => prev.filter((s) => s.id !== id));
   };
 
   const toggleExpanded = (id: string) => {
-    setStrategies(strategies.map(s =>
-      s.id === id ? { ...s, expanded: !s.expanded } : s
-    ));
+    setStrategies((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, expanded: !s.expanded } : s))
+    );
   };
 
   return (
@@ -154,24 +144,14 @@ export default function StrategySettings() {
         <IconButton
           size="small"
           onClick={() => setInfoDialogOpen(true)}
-          sx={{
-            bgcolor: 'rgba(255,255,255,0.8)',
-            backdropFilter: 'blur(8px)',
-            boxShadow: 1,
-            '&:hover': { bgcolor: 'white' },
-          }}
+          sx={{ bgcolor: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(8px)', boxShadow: 1, '&:hover': { bgcolor: 'white' } }}
         >
           <InfoIcon fontSize="small" />
         </IconButton>
         <IconButton
           size="small"
           onClick={() => setSettingsOpen(true)}
-          sx={{
-            bgcolor: 'rgba(255,255,255,0.8)',
-            backdropFilter: 'blur(8px)',
-            boxShadow: 1,
-            '&:hover': { bgcolor: 'white' },
-          }}
+          sx={{ bgcolor: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(8px)', boxShadow: 1, '&:hover': { bgcolor: 'white' } }}
         >
           <SettingsIcon fontSize="small" />
         </IconButton>
@@ -186,12 +166,11 @@ export default function StrategySettings() {
               elevation={2}
               sx={{
                 p: 3,
-                height: '100%',
                 transition: 'all 0.2s',
                 border: '1px solid',
                 borderColor: 'divider',
                 bgcolor: 'rgba(255, 255, 255, 0.95)',
-                backgroundImage: strategyBgImage ? `linear-gradient(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.85)), url(${strategyBgImage})` : 'none',
+                backgroundImage: strategyBgImage ? `linear-gradient(rgba(255,255,255,0.85), rgba(255,255,255,0.85)), url(${strategyBgImage})` : 'none',
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
                 backdropFilter: 'blur(10px)',
@@ -310,11 +289,13 @@ export default function StrategySettings() {
           <Stack spacing={3}>
             <Box>
               <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5 }}>策略卡片背景</Typography>
-              <Button variant="outlined" component="label" fullWidth sx={{ textTransform: 'none' }}>
+              <Button variant="outlined" component="label" fullWidth>
                 {strategyBgImage ? '更换背景图片' : '上传背景图片'}
                 <input type="file" hidden accept="image/*" onChange={handleBgUpload} />
               </Button>
-              {strategyBgImage && <Box sx={{ mt: 2, height: 100, borderRadius: 2, backgroundImage: `url(${strategyBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center', border: '1px solid #E0E0E0' }} />}
+              {strategyBgImage && (
+                <Box sx={{ mt: 2, height: 100, borderRadius: 2, backgroundImage: `url(${strategyBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center', border: '1px solid #E0E0E0' }} />
+              )}
             </Box>
             <Button variant="contained" onClick={() => setSettingsOpen(false)} sx={{ textTransform: 'none' }}>完成</Button>
           </Stack>
