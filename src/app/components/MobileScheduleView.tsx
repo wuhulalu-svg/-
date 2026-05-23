@@ -13,6 +13,8 @@ import {
   Checkbox,
   Slide,
   Grid,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import {
   Settings as SettingsIcon,
@@ -43,6 +45,8 @@ export default function MobileScheduleView() {
   const [headerBgImage, setHeaderBgImage] = useState('');
   const [planBoxBgImage, setPlanBoxBgImage] = useState('');
   const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   useEffect(() => {
     const handleOpenDialog = () => {
@@ -108,6 +112,10 @@ export default function MobileScheduleView() {
   };
 
   const togglePlan = (planId: string) => {
+    const plan = plans.find(p => p.id === planId);
+    if (!plan) return;
+
+    const wasCompleted = plan.completed;
     const updatedPlans = plans.map(p =>
       p.id === planId ? { ...p, completed: !p.completed } : p
     );
@@ -115,6 +123,12 @@ export default function MobileScheduleView() {
       ...allPlans,
       [dateKey]: updatedPlans,
     });
+
+    // 如果从未完成变为完成，显示鼓励提示
+    if (!wasCompleted && !plan.completed) {
+      setSnackbarMessage('主人，你真棒，又完成了一个任务呢~(*ˊ˘ˋ*)');
+      setSnackbarOpen(true);
+    }
   };
 
   const deletePlan = (planId: string) => {
@@ -149,6 +163,10 @@ export default function MobileScheduleView() {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbarOpen(false);
   };
 
   const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
@@ -308,7 +326,7 @@ export default function MobileScheduleView() {
         </Card>
       </Box>
 
-      {/* 添加计划 Dialog - 改进后的时间选择器 */}
+      {/* 添加计划 Dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm">
         <DialogContent>
           <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>📅 添加计划</Typography>
@@ -393,6 +411,18 @@ export default function MobileScheduleView() {
           </Stack>
         </DialogContent>
       </Dialog>
+
+      {/* 完成任务的 Snackbar 提示 */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={2000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity="success" sx={{ width: '100%', borderRadius: 3, bgcolor: '#4caf50', color: 'white' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
