@@ -213,48 +213,44 @@ export default function MainLayout() {
       </Box>
 
       {/* Header - Only show for settings view */}
-      {selectedView === 'settings' && (
-        <Box
-          sx={{
-            position: 'relative',
-            zIndex: 1,
-            bgcolor: 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(10px)',
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-            backgroundImage: sidebarBackground ? `linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)), url(${sidebarBackground})` : 'none',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        >
-          <Box sx={{ p: 2 }}>
-            {userAvatar || userName ? (
-              <Stack direction="row" spacing={2} alignItems="center">
-                <Avatar src={userAvatar} sx={{ width: 40, height: 40 }}>
-                  {userName.charAt(0).toUpperCase()}
-                </Avatar>
-                <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                    {userName || '用户'}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    我的
-                  </Typography>
-                </Box>
-              </Stack>
-            ) : (
-              <>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                  规划表
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  我的
-                </Typography>
-              </>
-            )}
+{/* Header - Only show for settings view */}
+{selectedView === 'settings' && (
+  <Box
+    sx={{
+      position: 'relative',
+      zIndex: 1,
+      bgcolor: 'rgba(255, 255, 255, 0.95)',
+      backdropFilter: 'blur(10px)',
+      borderBottom: '1px solid',
+      borderColor: 'divider',
+      backgroundImage: sidebarBackground ? `linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)), url(${sidebarBackground})` : 'none',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+    }}
+  >
+    <Box sx={{ p: 2 }}>
+      {userAvatar || userName ? (
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Avatar src={userAvatar} sx={{ width: 40, height: 40 }}>
+            {userName.charAt(0).toUpperCase()}
+          </Avatar>
+          <Box>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+              {userName || '用户'}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              我的
+            </Typography>
           </Box>
-        </Box>
+        </Stack>
+      ) : (
+        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+          我的
+        </Typography>
       )}
+    </Box>
+  </Box>
+)}
 
       {/* Main Content */}
       <Box sx={{ flex: 1, overflowY: 'auto', position: 'relative', zIndex: 1, pb: 9 }}>
