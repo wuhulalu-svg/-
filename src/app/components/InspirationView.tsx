@@ -24,7 +24,6 @@ import {
   Edit as EditIcon,
   Settings as SettingsIcon,
   MoreVert as MoreVertIcon,
-  Close as CloseIcon,
 } from '@mui/icons-material';
 
 interface Item {
@@ -69,6 +68,29 @@ export default function InspirationView() {
     localStorage.setItem('inspirationActiveBoxId', activeBoxId);
   }, [activeBoxId]);
 
+  // 监听底部加号事件
+  useEffect(() => {
+    const handleAddItem = () => {
+      addItemToActiveBox();
+    };
+    window.addEventListener('openAddInspirationItem', handleAddItem);
+    return () => {
+      window.removeEventListener('openAddInspirationItem', handleAddItem);
+    };
+  }, [activeBoxId, boxes]);
+
+  const addItemToActiveBox = () => {
+    setBoxes(boxes.map(box => {
+      if (box.id === activeBoxId) {
+        return {
+          ...box,
+          items: [...box.items, { id: Date.now().toString(), content: '', completed: false }],
+        };
+      }
+      return box;
+    }));
+  };
+
   const handleBgUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -94,7 +116,7 @@ export default function InspirationView() {
   };
 
   const deleteBox = (boxId: string) => {
-    if (boxes.length === 1) return; // 至少保留一个框框
+    if (boxes.length === 1) return;
     const newBoxes = boxes.filter(b => b.id !== boxId);
     setBoxes(newBoxes);
     if (activeBoxId === boxId) {
@@ -120,18 +142,6 @@ export default function InspirationView() {
     ));
     setRenameDialogOpen(false);
     setNewBoxName('');
-  };
-
-  const addItem = () => {
-    setBoxes(boxes.map(box => {
-      if (box.id === activeBoxId) {
-        return {
-          ...box,
-          items: [...box.items, { id: Date.now().toString(), content: '', completed: false }],
-        };
-      }
-      return box;
-    }));
   };
 
   const updateItem = (itemId: string, content: string) => {
@@ -190,14 +200,13 @@ export default function InspirationView() {
     <Box
       sx={{
         minHeight: '100%',
-        p: 2,
+        p: 1.5, // 缩小外边距
         backgroundImage: inspirationBgImage ? `url(${inspirationBgImage})` : 'none',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundAttachment: 'fixed',
       }}
     >
-      {/* 半透遮罩 */}
       {inspirationBgImage && (
         <Box
           sx={{
@@ -213,11 +222,12 @@ export default function InspirationView() {
         />
       )}
 
-      <Stack spacing={2} sx={{ position: 'relative', zIndex: 1 }}>
-        {/* 头部：设置按钮 */}
+      <Stack spacing={1.5} sx={{ position: 'relative', zIndex: 1 }}>
+        {/* 头部设置按钮 */}
         <Stack direction="row" justifyContent="flex-end">
           <IconButton
             onClick={() => setSettingsOpen(true)}
+            size="small"
             sx={{
               bgcolor: 'rgba(255,255,255,0.8)',
               backdropFilter: 'blur(8px)',
@@ -225,15 +235,15 @@ export default function InspirationView() {
               '&:hover': { bgcolor: 'white' },
             }}
           >
-            <SettingsIcon />
+            <SettingsIcon fontSize="small" />
           </IconButton>
         </Stack>
 
         {/* 框框选项卡区域 */}
         <Paper
-          elevation={2}
+          elevation={1}
           sx={{
-            borderRadius: 4,
+            borderRadius: 3,
             overflow: 'hidden',
             bgcolor: 'rgba(255, 255, 255, 0.9)',
             backdropFilter: 'blur(10px)',
@@ -247,44 +257,36 @@ export default function InspirationView() {
               scrollButtons="auto"
               sx={{
                 flex: 1,
+                minHeight: 40,
                 '& .MuiTab-root': {
                   textTransform: 'none',
-                  fontWeight: 600,
-                  fontSize: '0.9rem',
-                  minHeight: 56,
-                },
-                '& .Mui-selected': {
-                  color: 'primary.main',
+                  fontWeight: 500,
+                  fontSize: '0.8rem',
+                  minHeight: 40,
+                  py: 1,
                 },
               }}
             >
               {boxes.map(box => (
-                <Tab
-                  key={box.id}
-                  value={box.id}
-                  label={box.name}
-                  sx={{
-                    maxWidth: 'none',
-                  }}
-                />
+                <Tab key={box.id} value={box.id} label={box.name} />
               ))}
             </Tabs>
-            <IconButton onClick={addNewBox} sx={{ mx: 1 }}>
-              <AddIcon />
+            <IconButton onClick={addNewBox} size="small" sx={{ mx: 0.5 }}>
+              <AddIcon fontSize="small" />
             </IconButton>
           </Box>
 
-          {/* 当前框框的操作栏 */}
+          {/* 当前框框的操作栏（更紧凑） */}
           <Stack
             direction="row"
             alignItems="center"
             justifyContent="space-between"
-            sx={{ px: 2, py: 1.5, bgcolor: 'rgba(0,0,0,0.02)' }}
+            sx={{ px: 1.5, py: 1, bgcolor: 'rgba(0,0,0,0.02)' }}
           >
-            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
               {activeBox.name}
             </Typography>
-            <Stack direction="row" spacing={1}>
+            <Stack direction="row" spacing={0.5}>
               <IconButton size="small" onClick={() => openRenameDialog(activeBoxId)}>
                 <EditIcon fontSize="small" />
               </IconButton>
@@ -298,49 +300,47 @@ export default function InspirationView() {
             </Stack>
           </Stack>
 
-          {/* 待办列表区域 */}
-          <Box sx={{ p: 2 }}>
+          {/* 待办列表区域（缩小间距） */}
+          <Box sx={{ p: 1.5 }}>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
-              onClick={addItem}
+              onClick={addItemToActiveBox}
               fullWidth
+              size="small"
               sx={{
-                mb: 2,
+                mb: 1.5,
                 borderRadius: 40,
                 textTransform: 'none',
                 bgcolor: 'primary.main',
                 '&:hover': { bgcolor: 'primary.dark' },
+                py: 0.8,
+                fontSize: '0.8rem',
               }}
             >
               添加待办项
             </Button>
 
-            <Stack spacing={1.5}>
+            <Stack spacing={1}>
               {activeBox.items.length > 0 ? (
                 activeBox.items.map((item) => (
                   <Paper
                     key={item.id}
                     elevation={0}
                     sx={{
-                      p: 1.5,
-                      borderRadius: 3,
+                      p: 1,
+                      borderRadius: 2,
                       bgcolor: 'background.paper',
                       border: '1px solid',
                       borderColor: 'divider',
-                      transition: 'all 0.2s',
-                      '&:hover': {
-                        boxShadow: 2,
-                        borderColor: 'primary.main',
-                      },
                     }}
                   >
-                    <Stack direction="row" spacing={1} alignItems="center">
+                    <Stack direction="row" spacing={0.5} alignItems="center">
                       <Checkbox
                         checked={item.completed}
                         onChange={() => toggleItem(item.id)}
-                        size="medium"
-                        sx={{ color: 'primary.main', '&.Mui-checked': { color: 'primary.main' } }}
+                        size="small"
+                        sx={{ p: 0.5 }}
                       />
                       <TextField
                         fullWidth
@@ -351,7 +351,7 @@ export default function InspirationView() {
                         size="small"
                         sx={{
                           '& .MuiInput-root': {
-                            fontSize: '0.95rem',
+                            fontSize: '0.85rem',
                             textDecoration: item.completed ? 'line-through' : 'none',
                             opacity: item.completed ? 0.6 : 1,
                           },
@@ -360,8 +360,8 @@ export default function InspirationView() {
                           },
                         }}
                       />
-                      <IconButton size="small" onClick={() => deleteItem(item.id)} sx={{ color: 'error.main' }}>
-                        <DeleteIcon fontSize="small" />
+                      <IconButton size="small" onClick={() => deleteItem(item.id)} sx={{ p: 0.5 }}>
+                        <DeleteIcon fontSize="small" color="error" />
                       </IconButton>
                     </Stack>
                   </Paper>
@@ -369,15 +369,15 @@ export default function InspirationView() {
               ) : (
                 <Box
                   sx={{
-                    py: 6,
+                    py: 4,
                     textAlign: 'center',
-                    borderRadius: 3,
+                    borderRadius: 2,
                     bgcolor: 'rgba(0,0,0,0.02)',
                     border: '1px dashed',
                     borderColor: 'divider',
                   }}
                 >
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="caption" color="text.secondary">
                     暂无待办项，点击上方按钮添加
                   </Typography>
                 </Box>
@@ -402,24 +402,14 @@ export default function InspirationView() {
           />
         </DialogContent>
         <DialogActions sx={{ pb: 3, px: 3 }}>
-          <Button onClick={() => setRenameDialogOpen(false)} sx={{ textTransform: 'none' }}>
-            取消
-          </Button>
-          <Button onClick={saveRename} variant="contained" disabled={!newBoxName.trim()} sx={{ textTransform: 'none' }}>
-            保存
-          </Button>
+          <Button onClick={() => setRenameDialogOpen(false)} sx={{ textTransform: 'none' }}>取消</Button>
+          <Button onClick={saveRename} variant="contained" disabled={!newBoxName.trim()} sx={{ textTransform: 'none' }}>保存</Button>
         </DialogActions>
       </Dialog>
 
-      {/* 删除确认菜单 */}
+      {/* 删除菜单 */}
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
-        <MenuItem
-          onClick={() => {
-            deleteBox(menuBoxId);
-            handleMenuClose();
-          }}
-          sx={{ color: 'error.main' }}
-        >
+        <MenuItem onClick={() => { deleteBox(menuBoxId); handleMenuClose(); }} sx={{ color: 'error.main' }}>
           <DeleteIcon fontSize="small" sx={{ mr: 1 }} /> 删除此框框
         </MenuItem>
       </Menu>
@@ -427,45 +417,19 @@ export default function InspirationView() {
       {/* 背景设置弹窗 */}
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} fullWidth maxWidth="sm">
         <DialogContent sx={{ pt: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>
-            🎨 背景设置
-          </Typography>
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>🎨 背景设置</Typography>
           <Stack spacing={3}>
             <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5 }}>
-                灵感列表背景图片
-              </Typography>
-              <Button
-                variant="outlined"
-                component="label"
-                fullWidth
-                startIcon={<AddIcon />}
-                sx={{ textTransform: 'none', borderRadius: 40 }}
-              >
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5 }}>灵感列表背景图片</Typography>
+              <Button variant="outlined" component="label" fullWidth startIcon={<AddIcon />} sx={{ textTransform: 'none', borderRadius: 40 }}>
                 {inspirationBgImage ? '更换图片' : '上传图片'}
                 <input type="file" hidden accept="image/*" onChange={handleBgUpload} />
               </Button>
               {inspirationBgImage && (
-                <Box
-                  sx={{
-                    mt: 2,
-                    height: 120,
-                    borderRadius: 3,
-                    backgroundImage: `url(${inspirationBgImage})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    border: '1px solid #e0e0e0',
-                  }}
-                />
+                <Box sx={{ mt: 2, height: 100, borderRadius: 2, backgroundImage: `url(${inspirationBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center', border: '1px solid #e0e0e0' }} />
               )}
             </Box>
-            <Button
-              variant="contained"
-              onClick={() => setSettingsOpen(false)}
-              sx={{ textTransform: 'none', borderRadius: 40 }}
-            >
-              完成
-            </Button>
+            <Button variant="contained" onClick={() => setSettingsOpen(false)} sx={{ textTransform: 'none', borderRadius: 40 }}>完成</Button>
           </Stack>
         </DialogContent>
       </Dialog>
