@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+// 修改后的 MainLayout.tsx
+import { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -12,30 +13,25 @@ import {
   Settings as SettingsIcon,
   Add as AddIcon,
 } from '@mui/icons-material';
-import ScheduleView from './ScheduleView';
 import StrategySettings from './StrategySettings';
 import AppSettings from './AppSettings';
 import MobileScheduleView from './MobileScheduleView';
 import InspirationView from './InspirationView';
 import InstallPrompt from './InstallPrompt';
-import bgImage from '../../imports/7c92245cdcd6626a207319e0d96eee60.jpg';
 
 export default function MainLayout() {
   const [selectedView, setSelectedView] = useState<'strategy' | 'schedule' | 'settings' | 'plan'>('plan');
-  const [backgroundImage, setBackgroundImage] = useState<string>(bgImage);
   const [sidebarBackground, setSidebarBackground] = useState<string>('');
   const [userName, setUserName] = useState('');
   const [userAvatar, setUserAvatar] = useState('');
   const [loginBgImage, setLoginBgImage] = useState('');
 
   useEffect(() => {
-    const savedBg = localStorage.getItem('appBackgroundImage');
     const savedSidebarBg = localStorage.getItem('sidebarBackgroundImage');
     const savedName = localStorage.getItem('userName');
     const savedAvatar = localStorage.getItem('userAvatar');
     const savedLoginBg = localStorage.getItem('loginBackgroundImage');
 
-    if (savedBg) setBackgroundImage(savedBg);
     if (savedSidebarBg) setSidebarBackground(savedSidebarBg);
     if (savedName) setUserName(savedName);
     if (savedAvatar) setUserAvatar(savedAvatar);
@@ -44,13 +40,11 @@ export default function MainLayout() {
 
   useEffect(() => {
     const handleStorageChange = () => {
-      const savedBg = localStorage.getItem('appBackgroundImage');
       const savedSidebarBg = localStorage.getItem('sidebarBackgroundImage');
       const savedLoginBg = localStorage.getItem('loginBackgroundImage');
       const savedName = localStorage.getItem('userName');
       const savedAvatar = localStorage.getItem('userAvatar');
 
-      setBackgroundImage(savedBg || bgImage);
       setSidebarBackground(savedSidebarBg || '');
       setLoginBgImage(savedLoginBg || '');
       setUserName(savedName || '');
@@ -66,19 +60,14 @@ export default function MainLayout() {
     };
   }, []);
 
-  // 底部加号点击处理：根据不同视图触发不同添加事件
   const handleAddClick = () => {
     if (selectedView === 'plan') {
-      // 计划视图：打开添加计划对话框
       window.dispatchEvent(new CustomEvent('openAddPlanDialog'));
     } else if (selectedView === 'strategy') {
-      // 策略视图：打开添加策略对话框
       window.dispatchEvent(new CustomEvent('openAddStrategyDialog'));
     } else if (selectedView === 'schedule') {
-      // 灵感视图：添加待办项（在活跃框框中添加）
       window.dispatchEvent(new CustomEvent('openAddInspirationItem'));
     } else {
-      // 其他视图（如 settings）：跳转到计划视图并打开添加计划
       setSelectedView('plan');
       window.dispatchEvent(new CustomEvent('openAddPlanDialog'));
     }
@@ -90,24 +79,11 @@ export default function MainLayout() {
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        backgroundImage: `url(${backgroundImage})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
+        bgcolor: '#FAFAFA', // 纯色背景，不再使用图片
         position: 'relative',
-        transition: 'background-image 0.3s ease',
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(255, 255, 255, 0.85)',
-          zIndex: 0,
-        }
       }}
     >
-      {/* Bottom Navigation Bar */}
+      {/* Bottom Navigation Bar - 保持不变 */}
       <Box
         sx={{
           position: 'fixed',
@@ -212,45 +188,44 @@ export default function MainLayout() {
         </IconButton>
       </Box>
 
-      {/* Header - Only show for settings view */}
-{/* Header - Only show for settings view */}
-{selectedView === 'settings' && (
-  <Box
-    sx={{
-      position: 'relative',
-      zIndex: 1,
-      bgcolor: 'rgba(255, 255, 255, 0.95)',
-      backdropFilter: 'blur(10px)',
-      borderBottom: '1px solid',
-      borderColor: 'divider',
-      backgroundImage: sidebarBackground ? `linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)), url(${sidebarBackground})` : 'none',
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-    }}
-  >
-    <Box sx={{ p: 2 }}>
-      {userAvatar || userName ? (
-        <Stack direction="row" spacing={2} alignItems="center">
-          <Avatar src={userAvatar} sx={{ width: 40, height: 40 }}>
-            {userName.charAt(0).toUpperCase()}
-          </Avatar>
-          <Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-              {userName || '用户'}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              我的
-            </Typography>
+      {/* Header for settings view only */}
+      {selectedView === 'settings' && (
+        <Box
+          sx={{
+            position: 'relative',
+            zIndex: 1,
+            bgcolor: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(10px)',
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+            backgroundImage: sidebarBackground ? `linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)), url(${sidebarBackground})` : 'none',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        >
+          <Box sx={{ p: 2 }}>
+            {userAvatar || userName ? (
+              <Stack direction="row" spacing={2} alignItems="center">
+                <Avatar src={userAvatar} sx={{ width: 40, height: 40 }}>
+                  {userName.charAt(0).toUpperCase()}
+                </Avatar>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    {userName || '用户'}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    我的
+                  </Typography>
+                </Box>
+              </Stack>
+            ) : (
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                我的
+              </Typography>
+            )}
           </Box>
-        </Stack>
-      ) : (
-        <Typography variant="h6" sx={{ fontWeight: 600 }}>
-          我的
-        </Typography>
+        </Box>
       )}
-    </Box>
-  </Box>
-)}
 
       {/* Main Content */}
       <Box sx={{ flex: 1, overflowY: 'auto', position: 'relative', zIndex: 1, pb: 9 }}>
@@ -268,7 +243,6 @@ export default function MainLayout() {
         )}
       </Box>
 
-      {/* PWA 安装提示 */}
       <InstallPrompt />
     </Box>
   );
