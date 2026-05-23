@@ -4,7 +4,6 @@ import {
   Typography,
   Stack,
   Button,
-  Card,
   Avatar,
   TextField,
   IconButton,
@@ -22,7 +21,6 @@ export default function AppSettings() {
   useEffect(() => {
     const savedName = localStorage.getItem('userName');
     const savedAvatar = localStorage.getItem('userAvatar');
-
     if (savedName) setUserName(savedName);
     if (savedAvatar) setUserAvatar(savedAvatar);
   }, []);
@@ -74,9 +72,7 @@ export default function AppSettings() {
                     right: 0,
                     bgcolor: 'primary.main',
                     color: 'white',
-                    '&:hover': {
-                      bgcolor: 'primary.dark',
-                    },
+                    '&:hover': { bgcolor: 'primary.dark' },
                   }}
                 >
                   <UploadIcon />
@@ -93,12 +89,7 @@ export default function AppSettings() {
               fullWidth
             />
 
-            <Button
-              variant="contained"
-              size="large"
-              onClick={saveUserProfile}
-              sx={{ textTransform: 'none' }}
-            >
+            <Button variant="contained" size="large" onClick={saveUserProfile} sx={{ textTransform: 'none' }}>
               保存个人资料
             </Button>
           </Stack>
