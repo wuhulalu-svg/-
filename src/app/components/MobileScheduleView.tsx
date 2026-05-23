@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Box, Typography, Stack, IconButton, Card, alpha, Dialog, DialogContent,
-  TextField, Button, Checkbox, Slide, Snackbar, Alert, Paper,
+  TextField, Button, Checkbox, Slide, Snackbar, Alert, Slider, Paper,
 } from '@mui/material';
 import {
   Settings as SettingsIcon, Delete as DeleteIcon, AccessTime as TimeIcon,
@@ -96,7 +96,7 @@ function ClockPicker({ value, onChange }: { value: { hour: number; minute: numbe
   );
 }
 
-// ---------- 可拖拽缩放图片编辑器 (竖屏预览，透明度仅作用于图片) ----------
+// ---------- 可拖拽缩放图片编辑器（竖屏比例）----------
 function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50, initialPosY = 50, initialOpacity = 100 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -107,20 +107,23 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
   const [isDragging, setIsDragging] = useState(false);
   const lastPos = useRef({ x: 0, y: 0 });
 
-  // 绘制预览：Canvas 尺寸固定为宽300，高400（竖屏比例）
+  // 绘制预览（只画背景图片，不影响其他）
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     const img = new Image();
     img.src = imageUrl;
     img.onload = () => {
+      // 固定竖屏比例 3:4 (宽300，高400)
       const w = 300;
       const h = 400;
       canvas.width = w;
       canvas.height = h;
       ctx.clearRect(0, 0, w, h);
+      ctx.save();
       ctx.globalAlpha = opacity / 100;
       const scaleVal = scale / 100;
       const drawW = w * scaleVal;
@@ -128,7 +131,7 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
       const dx = (posX / 100) * (w - drawW);
       const dy = (posY / 100) * (h - drawH);
       ctx.drawImage(img, dx, dy, drawW, drawH);
-      ctx.globalAlpha = 1;
+      ctx.restore();
     };
   }, [imageUrl, scale, posX, opacity]);
 
@@ -158,13 +161,12 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
   };
   const handleMouseUp = () => setIsDragging(false);
   const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
     const delta = e.deltaY > 0 ? -5 : 5;
     const newScale = Math.min(200, Math.max(50, scale + delta));
     setScale(newScale);
     onUpdate({ scale: newScale, posX, posY, opacity });
   };
-  const handleOpacitySlider = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleOpacityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newOpacity = Number(e.target.value);
     setOpacity(newOpacity);
     onUpdate({ scale, posX, posY, opacity: newOpacity });
@@ -177,28 +179,19 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
 
   return (
     <Box>
-      <Box
-        ref={containerRef}
-        sx={{
-          width: '100%',
-          display: 'flex',
-          justifyContent: 'center',
-          bgcolor: '#f5f5f5',
-          borderRadius: 2,
-          overflow: 'hidden',
-          cursor: 'grab',
-          p: 1,
-        }}
-      >
+      <Box ref={containerRef} sx={{ width: '100%', display: 'flex', justifyContent: 'center', mb: 2 }}>
         <canvas
           ref={canvasRef}
-          style={{ width: 'auto', height: '200px', display: 'block', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+          width="300"
+          height="400"
+          style={{ width: 300, height: 400, border: '1px solid #ccc', borderRadius: 8, cursor: 'grab' }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onWheel={handleWheel}
         />
       </Box>
+      <Typography variant="caption" display="block" sx={{ textAlign: 'center' }}>鼠标拖拽移动图片，滚轮缩放</Typography>
       <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
         <Box sx={{ flex: 1 }}>
           <Typography variant="caption">缩放 ({scale}%)</Typography>
@@ -206,14 +199,14 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
         </Box>
         <Box sx={{ flex: 1 }}>
           <Typography variant="caption">透明度 ({opacity}%)</Typography>
-          <input type="range" min={0} max={100} step={1} value={opacity} onChange={handleOpacitySlider} style={{ width: '100%' }} />
+          <input type="range" min={0} max={100} step={1} value={opacity} onChange={handleOpacityChange} style={{ width: '100%' }} />
         </Box>
       </Stack>
-      <Typography variant="caption" display="block" sx={{ mt: 1, textAlign: 'center' }}>鼠标拖拽移动图片，滚轮缩放</Typography>
     </Box>
   );
 }
 
+// ---------- 计划接口 ----------
 interface Plan {
   id: string;
   startTime: string;
@@ -256,6 +249,13 @@ export default function MobileScheduleView() {
     localStorage.setItem('dailyPlansV2', JSON.stringify(allPlans));
   }, [allPlans]);
 
+  // 监听添加计划事件（底部加号）
+  useEffect(() => {
+    const handleOpenDialog = () => setDialogOpen(true);
+    window.addEventListener('openAddPlanDialog', handleOpenDialog);
+    return () => window.removeEventListener('openAddPlanDialog', handleOpenDialog);
+  }, []);
+
   const updateBg = (type: 'global' | 'header' | 'planbox', newSettings: any) => {
     if (type === 'global') setGlobalBg(newSettings);
     else if (type === 'header') setHeaderBg(newSettings);
@@ -273,13 +273,6 @@ export default function MobileScheduleView() {
     };
     reader.readAsDataURL(file);
   };
-
-  // 监听添加计划事件
-  useEffect(() => {
-    const handleOpen = () => setDialogOpen(true);
-    window.addEventListener('openAddPlanDialog', handleOpen);
-    return () => window.removeEventListener('openAddPlanDialog', handleOpen);
-  }, []);
 
   const dateKey = selectedDate.toISOString().split('T')[0];
   const plans = allPlans[dateKey] || [];
@@ -342,20 +335,31 @@ export default function MobileScheduleView() {
       backgroundRepeat: 'no-repeat',
       backgroundColor: '#FAFAFA',
     }}>
-      {/* 头部区域背景 */}
+      {/* 头部区域背景（应用 opacity 时只影响背景层，文字卡片不受影响） */}
       <Box sx={{
+        position: 'relative',
         backgroundImage: headerBg.url ? `url(${headerBg.url})` : 'none',
         backgroundSize: `${headerBg.scale}%`,
         backgroundPosition: `${headerBg.posX}% ${headerBg.posY}%`,
         p: 2,
         borderBottom: '1px solid #f0f0f0',
         bgcolor: 'white',
+        '&::before': headerBg.url ? {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: `rgba(255,255,255,${1 - headerBg.opacity / 100})`,
+          zIndex: 0,
+        } : {},
       }}>
-        <Stack direction="row" justifyContent="flex-end" spacing={1} mb={2}>
+        <Stack direction="row" justifyContent="flex-end" spacing={1} mb={2} sx={{ position: 'relative', zIndex: 1 }}>
           <IconButton size="small" onClick={() => setInfoOpen(true)}><InfoIcon fontSize="small" /></IconButton>
           <IconButton size="small" onClick={() => setSettingsOpen(true)}><SettingsIcon fontSize="small" /></IconButton>
         </Stack>
-        <Stack direction="row" alignItems="center" spacing={1}>
+        <Stack direction="row" alignItems="center" spacing={1} sx={{ position: 'relative', zIndex: 1 }}>
           <IconButton size="small" onClick={() => changeDate(-1)}><ChevronLeft /></IconButton>
           <Box sx={{ flex: 1, textAlign: 'center' }}>
             <Typography variant="h5" fontWeight={700} onClick={() => setDatePickerOpen(true)} sx={{ cursor: 'pointer' }}>
@@ -364,7 +368,7 @@ export default function MobileScheduleView() {
           </Box>
           <IconButton size="small" onClick={() => changeDate(1)}><ChevronRight /></IconButton>
         </Stack>
-        <Stack direction="row" spacing={1} justifyContent="space-between" mt={2}>
+        <Stack direction="row" spacing={1} justifyContent="space-between" mt={2} sx={{ position: 'relative', zIndex: 1 }}>
           {dates.map((date, idx) => (
             <Box key={idx} onClick={() => selectSpecificDate(date)} sx={{ textAlign: 'center', cursor: 'pointer' }}>
               <Typography variant="caption">{weekDays[idx]}</Typography>
@@ -386,6 +390,7 @@ export default function MobileScheduleView() {
 
       <Box sx={{ p: 2 }}>
         <Card sx={{
+          position: 'relative',
           backgroundImage: planBoxBg.url ? `url(${planBoxBg.url})` : 'none',
           backgroundSize: `${planBoxBg.scale}%`,
           backgroundPosition: `${planBoxBg.posX}% ${planBoxBg.posY}%`,
@@ -393,8 +398,19 @@ export default function MobileScheduleView() {
           p: 2,
           minHeight: 400,
           boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          '&::before': planBoxBg.url ? {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: `rgba(255,255,255,${1 - planBoxBg.opacity / 100})`,
+            borderRadius: 3,
+            zIndex: 0,
+          } : {},
         }}>
-          <Stack spacing={1.5}>
+          <Stack spacing={1.5} sx={{ position: 'relative', zIndex: 1 }}>
             {plans.map(plan => (
               <Paper key={plan.id} sx={{ p: 1.5, bgcolor: plan.completed ? alpha('#4caf50',0.1) : 'white', border: `1px solid ${plan.completed ? '#4caf50' : '#e0e0e0'}` }}>
                 <Stack direction="row" spacing={1} alignItems="center">
@@ -417,7 +433,7 @@ export default function MobileScheduleView() {
         </Card>
       </Box>
 
-      {/* 添加计划对话框 */}
+      {/* 添加计划对话框 - 钟表选择器 */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogContent>
           <Typography variant="h6" fontWeight={700} mb={2}>📅 添加计划</Typography>
