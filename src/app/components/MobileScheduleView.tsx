@@ -1,24 +1,103 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Box, Typography, Stack, IconButton, Card, alpha, Dialog, DialogContent,
-  TextField, Button, Checkbox, Slide, Snackbar, Alert, Slider, Paper, Radio, RadioGroup, FormControlLabel
+  TextField, Button, Checkbox, Slide, Snackbar, Alert, Paper,
 } from '@mui/material';
 import {
   Settings as SettingsIcon, Delete as DeleteIcon, AccessTime as TimeIcon,
   ChevronLeft, ChevronRight, CalendarToday as CalendarIcon, Info as InfoIcon,
 } from '@mui/icons-material';
 
-// ---------- 可拖拽缩放图片组件 ----------
-interface ImageEditorProps {
-  imageUrl: string;
-  onUpdate: (settings: { scale: number; posX: number; posY: number; opacity: number }) => void;
-  initialScale?: number;
-  initialPosX?: number;
-  initialPosY?: number;
-  initialOpacity?: number;
+// ---------- 圆形钟表组件 ----------
+function ClockPicker({ value, onChange }: { value: { hour: number; minute: number; period: 'AM' | 'PM' }; onChange: (t: any) => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const size = 220;
+  const center = size / 2;
+  const radius = size * 0.4;
+
+  useEffect(() => {
+    drawClock();
+  }, [value]);
+
+  const drawClock = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, size, size);
+    ctx.beginPath();
+    ctx.arc(center, center, radius, 0, 2 * Math.PI);
+    ctx.fillStyle = '#fef9e6';
+    ctx.fill();
+    ctx.strokeStyle = '#d4a373';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    for (let i = 1; i <= 12; i++) {
+      let angle = (i * 30 - 90) * Math.PI / 180;
+      let x = center + radius * 0.82 * Math.cos(angle);
+      let y = center + radius * 0.82 * Math.sin(angle);
+      ctx.fillStyle = '#5e3a1c';
+      ctx.font = 'bold 18px "Segoe UI"';
+      ctx.fillText(i.toString(), x - 7, y + 7);
+    }
+    let hourAngle = ((value.hour % 12) * 30 + value.minute * 0.5 - 90) * Math.PI / 180;
+    ctx.beginPath();
+    ctx.moveTo(center, center);
+    ctx.lineTo(center + radius * 0.5 * Math.cos(hourAngle), center + radius * 0.5 * Math.sin(hourAngle));
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = '#6366f1';
+    ctx.stroke();
+    let minuteAngle = (value.minute * 6 - 90) * Math.PI / 180;
+    ctx.beginPath();
+    ctx.moveTo(center, center);
+    ctx.lineTo(center + radius * 0.75 * Math.cos(minuteAngle), center + radius * 0.75 * Math.sin(minuteAngle));
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#ec4899';
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(center, center, 6, 0, 2 * Math.PI);
+    ctx.fillStyle = '#333';
+    ctx.fill();
+  };
+
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const rect = canvasRef.current!.getBoundingClientRect();
+    const scaleX = canvasRef.current!.width / rect.width;
+    const scaleY = canvasRef.current!.height / rect.height;
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    const mouseY = (e.clientY - rect.top) * scaleY;
+    const dx = mouseX - center;
+    const dy = mouseY - center;
+    const dist = Math.hypot(dx, dy);
+    if (dist > radius) return;
+    let angle = Math.atan2(dy, dx) + Math.PI/2;
+    if (angle < 0) angle += 2*Math.PI;
+    let hour = Math.round(angle / (Math.PI/6)) % 12;
+    if (hour === 0) hour = 12;
+    let minute = Math.floor((dist / radius) * 60);
+    minute = Math.min(59, Math.max(0, minute));
+    onChange({ ...value, hour, minute });
+  };
+
+  const togglePeriod = () => {
+    onChange({ ...value, period: value.period === 'AM' ? 'PM' : 'AM' });
+  };
+
+  return (
+    <Stack alignItems="center" spacing={1}>
+      <canvas ref={canvasRef} width={size} height={size} onClick={handleCanvasClick} style={{ cursor: 'pointer', borderRadius: '50%', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+      <Button variant="outlined" size="small" onClick={togglePeriod} sx={{ minWidth: 100 }}>
+        切换 {value.period === 'AM' ? '上午 → 下午' : '下午 → 上午'}
+      </Button>
+      <Typography variant="body2" color="text.secondary">
+        当前：{value.hour}:{value.minute.toString().padStart(2,'0')} {value.period}
+      </Typography>
+    </Stack>
+  );
 }
 
-function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50, initialPosY = 50, initialOpacity = 100 }: ImageEditorProps) {
+// ---------- 可拖拽缩放图片编辑器 (竖屏预览，透明度仅作用于图片) ----------
+function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50, initialPosY = 50, initialOpacity = 100 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(initialScale);
@@ -28,23 +107,21 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
   const [isDragging, setIsDragging] = useState(false);
   const lastPos = useRef({ x: 0, y: 0 });
 
-  // 绘制预览
+  // 绘制预览：Canvas 尺寸固定为宽300，高400（竖屏比例）
   useEffect(() => {
     const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     const img = new Image();
-    img.crossOrigin = "Anonymous";
     img.src = imageUrl;
     img.onload = () => {
-      const w = canvas.width = container.clientWidth;
-      const h = canvas.height = container.clientHeight;
+      const w = 300;
+      const h = 400;
+      canvas.width = w;
+      canvas.height = h;
       ctx.clearRect(0, 0, w, h);
       ctx.globalAlpha = opacity / 100;
-      const imgW = img.width;
-      const imgH = img.height;
       const scaleVal = scale / 100;
       const drawW = w * scaleVal;
       const drawH = h * scaleVal;
@@ -61,8 +138,6 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
   };
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging) return;
-    const dx = e.clientX - lastPos.current.x;
-    const dy = e.clientY - lastPos.current.y;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const w = canvas.width;
@@ -72,8 +147,8 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
     const drawH = h * scaleVal;
     const maxDeltaX = (w - drawW) / 2;
     const maxDeltaY = (h - drawH) / 2;
-    let newPosX = posX + (dx / maxDeltaX) * 50;
-    let newPosY = posY + (dy / maxDeltaY) * 50;
+    let newPosX = posX + ((e.clientX - lastPos.current.x) / maxDeltaX) * 50;
+    let newPosY = posY + ((e.clientY - lastPos.current.y) / maxDeltaY) * 50;
     newPosX = Math.min(100, Math.max(0, newPosX));
     newPosY = Math.min(100, Math.max(0, newPosY));
     setPosX(newPosX);
@@ -82,38 +157,69 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
     onUpdate({ scale, posX: newPosX, posY: newPosY, opacity });
   };
   const handleMouseUp = () => setIsDragging(false);
-
   const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
     const delta = e.deltaY > 0 ? -5 : 5;
     const newScale = Math.min(200, Math.max(50, scale + delta));
+    setScale(newScale);
+    onUpdate({ scale: newScale, posX, posY, opacity });
+  };
+  const handleOpacitySlider = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newOpacity = Number(e.target.value);
+    setOpacity(newOpacity);
+    onUpdate({ scale, posX, posY, opacity: newOpacity });
+  };
+  const handleScaleSlider = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newScale = Number(e.target.value);
     setScale(newScale);
     onUpdate({ scale: newScale, posX, posY, opacity });
   };
 
   return (
     <Box>
-      <Box ref={containerRef} sx={{ width: '100%', height: 200, border: '1px solid #ccc', borderRadius: 2, overflow: 'hidden', cursor: 'grab', position: 'relative' }}>
+      <Box
+        ref={containerRef}
+        sx={{
+          width: '100%',
+          display: 'flex',
+          justifyContent: 'center',
+          bgcolor: '#f5f5f5',
+          borderRadius: 2,
+          overflow: 'hidden',
+          cursor: 'grab',
+          p: 1,
+        }}
+      >
         <canvas
           ref={canvasRef}
-          style={{ width: '100%', height: '100%', display: 'block' }}
+          style={{ width: 'auto', height: '200px', display: 'block', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onWheel={handleWheel}
         />
       </Box>
-      <Typography variant="caption" display="block" sx={{ mt: 1, textAlign: 'center' }}>手指拖动移动图片，滚轮/捏合缩放</Typography>
       <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
-        <TextField type="range" label="缩放" value={scale} onChange={(e) => { const v = Number(e.target.value); setScale(v); onUpdate({ scale: v, posX, posY, opacity }); }} inputProps={{ min: 50, max: 200 }} fullWidth />
-        <TextField type="range" label="透明度" value={opacity} onChange={(e) => { const v = Number(e.target.value); setOpacity(v); onUpdate({ scale, posX, posY, opacity: v }); }} inputProps={{ min: 0, max: 100 }} fullWidth />
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="caption">缩放 ({scale}%)</Typography>
+          <input type="range" min={50} max={200} step={1} value={scale} onChange={handleScaleSlider} style={{ width: '100%' }} />
+        </Box>
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="caption">透明度 ({opacity}%)</Typography>
+          <input type="range" min={0} max={100} step={1} value={opacity} onChange={handleOpacitySlider} style={{ width: '100%' }} />
+        </Box>
       </Stack>
+      <Typography variant="caption" display="block" sx={{ mt: 1, textAlign: 'center' }}>鼠标拖拽移动图片，滚轮缩放</Typography>
     </Box>
   );
 }
 
-// ---------- 圆形钟表组件（同前） ----------
-function ClockPicker({ value, onChange }: { value: { hour: number; minute: number; period: 'AM' | 'PM' }; onChange: (t: any) => void }) {
-  // ... 与之前相同，略
+interface Plan {
+  id: string;
+  startTime: string;
+  endTime: string;
+  content: string;
+  completed: boolean;
 }
 
 export default function MobileScheduleView() {
@@ -130,17 +236,17 @@ export default function MobileScheduleView() {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState('');
 
-  // 背景设置状态：整体背景 + 顶部区域背景 + 计划列表背景
+  // 背景设置状态
   const [globalBg, setGlobalBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
   const [headerBg, setHeaderBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
   const [planBoxBg, setPlanBoxBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
 
   useEffect(() => {
-    const saved = localStorage.getItem('dailyPlansV2');
+    const savedPlans = localStorage.getItem('dailyPlansV2');
     const savedGlobal = localStorage.getItem('planGlobalBg');
     const savedHeader = localStorage.getItem('planHeaderBg');
     const savedPlanBox = localStorage.getItem('planBoxBg');
-    if (saved) setAllPlans(JSON.parse(saved));
+    if (savedPlans) setAllPlans(JSON.parse(savedPlans));
     if (savedGlobal) setGlobalBg(JSON.parse(savedGlobal));
     if (savedHeader) setHeaderBg(JSON.parse(savedHeader));
     if (savedPlanBox) setPlanBoxBg(JSON.parse(savedPlanBox));
@@ -150,13 +256,11 @@ export default function MobileScheduleView() {
     localStorage.setItem('dailyPlansV2', JSON.stringify(allPlans));
   }, [allPlans]);
 
-  // 更新任意背景
   const updateBg = (type: 'global' | 'header' | 'planbox', newSettings: any) => {
-    const key = type === 'global' ? 'planGlobalBg' : type === 'header' ? 'planHeaderBg' : 'planBoxBg';
     if (type === 'global') setGlobalBg(newSettings);
     else if (type === 'header') setHeaderBg(newSettings);
     else setPlanBoxBg(newSettings);
-    localStorage.setItem(key, JSON.stringify(newSettings));
+    localStorage.setItem(type === 'global' ? 'planGlobalBg' : type === 'header' ? 'planHeaderBg' : 'planBoxBg', JSON.stringify(newSettings));
   };
 
   const handleBgUpload = (type: 'global' | 'header' | 'planbox') => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -170,6 +274,13 @@ export default function MobileScheduleView() {
     reader.readAsDataURL(file);
   };
 
+  // 监听添加计划事件
+  useEffect(() => {
+    const handleOpen = () => setDialogOpen(true);
+    window.addEventListener('openAddPlanDialog', handleOpen);
+    return () => window.removeEventListener('openAddPlanDialog', handleOpen);
+  }, []);
+
   const dateKey = selectedDate.toISOString().split('T')[0];
   const plans = allPlans[dateKey] || [];
 
@@ -177,8 +288,15 @@ export default function MobileScheduleView() {
     if (!newPlanContent.trim()) return;
     const startStr = `${newPlanStart.hour}:${newPlanStart.minute.toString().padStart(2,'0')} ${newPlanStart.period}`;
     const endStr = `${newPlanEnd.hour}:${newPlanEnd.minute.toString().padStart(2,'0')} ${newPlanEnd.period}`;
-    const newPlan = { id: Date.now().toString(), startTime: startStr, endTime: endStr, content: newPlanContent, completed: false };
-    setAllPlans({ ...allPlans, [dateKey]: [...plans, newPlan].sort((a,b)=>a.startTime.localeCompare(b.startTime)) });
+    const newPlan: Plan = {
+      id: Date.now().toString(),
+      startTime: startStr,
+      endTime: endStr,
+      content: newPlanContent,
+      completed: false,
+    };
+    const updated = [...plans, newPlan].sort((a, b) => a.startTime.localeCompare(b.startTime));
+    setAllPlans({ ...allPlans, [dateKey]: updated });
     setNewPlanContent('');
     setDialogOpen(false);
   };
@@ -222,21 +340,21 @@ export default function MobileScheduleView() {
       backgroundSize: `${globalBg.scale}%`,
       backgroundPosition: `${globalBg.posX}% ${globalBg.posY}%`,
       backgroundRepeat: 'no-repeat',
-      opacity: globalBg.opacity / 100,
-      bgcolor: '#FAFAFA',
+      backgroundColor: '#FAFAFA',
     }}>
-      {/* 头部区域（含背景图片） */}
+      {/* 头部区域背景 */}
       <Box sx={{
         backgroundImage: headerBg.url ? `url(${headerBg.url})` : 'none',
         backgroundSize: `${headerBg.scale}%`,
         backgroundPosition: `${headerBg.posX}% ${headerBg.posY}%`,
-        p: 2, borderBottom: '1px solid #f0f0f0', bgcolor: 'white'
+        p: 2,
+        borderBottom: '1px solid #f0f0f0',
+        bgcolor: 'white',
       }}>
         <Stack direction="row" justifyContent="flex-end" spacing={1} mb={2}>
           <IconButton size="small" onClick={() => setInfoOpen(true)}><InfoIcon fontSize="small" /></IconButton>
           <IconButton size="small" onClick={() => setSettingsOpen(true)}><SettingsIcon fontSize="small" /></IconButton>
         </Stack>
-        {/* 日期导航等... 同前 */}
         <Stack direction="row" alignItems="center" spacing={1}>
           <IconButton size="small" onClick={() => changeDate(-1)}><ChevronLeft /></IconButton>
           <Box sx={{ flex: 1, textAlign: 'center' }}>
@@ -250,7 +368,11 @@ export default function MobileScheduleView() {
           {dates.map((date, idx) => (
             <Box key={idx} onClick={() => selectSpecificDate(date)} sx={{ textAlign: 'center', cursor: 'pointer' }}>
               <Typography variant="caption">{weekDays[idx]}</Typography>
-              <Box sx={{ width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: date.toDateString() === selectedDate.toDateString() ? '#333' : 'transparent', color: date.toDateString() === selectedDate.toDateString() ? 'white' : 'text.primary' }}>
+              <Box sx={{
+                width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                bgcolor: date.toDateString() === selectedDate.toDateString() ? '#333' : 'transparent',
+                color: date.toDateString() === selectedDate.toDateString() ? 'white' : 'text.primary',
+              }}>
                 {date.getDate()}
               </Box>
             </Box>
@@ -267,7 +389,10 @@ export default function MobileScheduleView() {
           backgroundImage: planBoxBg.url ? `url(${planBoxBg.url})` : 'none',
           backgroundSize: `${planBoxBg.scale}%`,
           backgroundPosition: `${planBoxBg.posX}% ${planBoxBg.posY}%`,
-          borderRadius: 3, p: 2, minHeight: 400, boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+          borderRadius: 3,
+          p: 2,
+          minHeight: 400,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
         }}>
           <Stack spacing={1.5}>
             {plans.map(plan => (
@@ -283,12 +408,16 @@ export default function MobileScheduleView() {
                 </Stack>
               </Paper>
             ))}
-            {plans.length === 0 && <Box sx={{ py: 8, textAlign: 'center', opacity: 0.5 }}>点击底部加号添加计划</Box>}
+            {plans.length === 0 && (
+              <Box sx={{ py: 8, textAlign: 'center', opacity: 0.5 }}>
+                <Typography variant="body2">点击底部加号添加计划</Typography>
+              </Box>
+            )}
           </Stack>
         </Card>
       </Box>
 
-      {/* 添加计划对话框 - 钟表选择器 */}
+      {/* 添加计划对话框 */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogContent>
           <Typography variant="h6" fontWeight={700} mb={2}>📅 添加计划</Typography>
@@ -315,48 +444,43 @@ export default function MobileScheduleView() {
         </DialogContent>
       </Dialog>
 
-      {/* 背景设置对话框 - 支持三种背景，每个都有可视编辑 */}
+      {/* 背景设置对话框 */}
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="md" fullWidth>
         <DialogContent>
           <Typography variant="h6" fontWeight={700} mb={2}>⚙️ 背景设置</Typography>
-          <RadioGroup defaultValue="global" sx={{ mb: 2 }}>
-            <FormControlLabel value="global" control={<Radio />} label="整体背景" />
-            <FormControlLabel value="header" control={<Radio />} label="顶部区域背景" />
-            <FormControlLabel value="planbox" control={<Radio />} label="计划列表背景" />
-          </RadioGroup>
-          <Box sx={{ mt: 2 }}>
-            {/* 这里需要根据选中的 Radio 动态显示对应的编辑器，为了简单，同时显示三个编辑器 */}
-            <Typography variant="subtitle2">整体背景</Typography>
-            {globalBg.url ? (
-              <ImageEditor
-                imageUrl={globalBg.url}
-                onUpdate={(s) => updateBg('global', { ...globalBg, ...s })}
-                initialScale={globalBg.scale} initialPosX={globalBg.posX} initialPosY={globalBg.posY} initialOpacity={globalBg.opacity}
-              />
-            ) : (
-              <Button variant="outlined" component="label" fullWidth>上传整体背景图片<input type="file" hidden accept="image/*" onChange={handleBgUpload('global')} /></Button>
-            )}
-            <Typography variant="subtitle2" sx={{ mt: 3 }}>顶部区域背景</Typography>
-            {headerBg.url ? (
-              <ImageEditor
-                imageUrl={headerBg.url}
-                onUpdate={(s) => updateBg('header', { ...headerBg, ...s })}
-                initialScale={headerBg.scale} initialPosX={headerBg.posX} initialPosY={headerBg.posY} initialOpacity={headerBg.opacity}
-              />
-            ) : (
-              <Button variant="outlined" component="label" fullWidth>上传顶部背景图片<input type="file" hidden accept="image/*" onChange={handleBgUpload('header')} /></Button>
-            )}
-            <Typography variant="subtitle2" sx={{ mt: 3 }}>计划列表背景</Typography>
-            {planBoxBg.url ? (
-              <ImageEditor
-                imageUrl={planBoxBg.url}
-                onUpdate={(s) => updateBg('planbox', { ...planBoxBg, ...s })}
-                initialScale={planBoxBg.scale} initialPosX={planBoxBg.posX} initialPosY={planBoxBg.posY} initialOpacity={planBoxBg.opacity}
-              />
-            ) : (
-              <Button variant="outlined" component="label" fullWidth>上传列表背景图片<input type="file" hidden accept="image/*" onChange={handleBgUpload('planbox')} /></Button>
-            )}
-          </Box>
+          {/* 整体背景 */}
+          <Typography variant="subtitle2" sx={{ mt: 2 }}>🌍 整体背景</Typography>
+          {globalBg.url ? (
+            <ImageEditor
+              imageUrl={globalBg.url}
+              onUpdate={(s) => updateBg('global', { ...globalBg, ...s })}
+              initialScale={globalBg.scale} initialPosX={globalBg.posX} initialPosY={globalBg.posY} initialOpacity={globalBg.opacity}
+            />
+          ) : (
+            <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }}>上传整体背景图片<input type="file" hidden accept="image/*" onChange={handleBgUpload('global')} /></Button>
+          )}
+          {/* 顶部区域背景 */}
+          <Typography variant="subtitle2" sx={{ mt: 3 }}>📌 顶部区域背景</Typography>
+          {headerBg.url ? (
+            <ImageEditor
+              imageUrl={headerBg.url}
+              onUpdate={(s) => updateBg('header', { ...headerBg, ...s })}
+              initialScale={headerBg.scale} initialPosX={headerBg.posX} initialPosY={headerBg.posY} initialOpacity={headerBg.opacity}
+            />
+          ) : (
+            <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }}>上传顶部背景图片<input type="file" hidden accept="image/*" onChange={handleBgUpload('header')} /></Button>
+          )}
+          {/* 计划列表背景 */}
+          <Typography variant="subtitle2" sx={{ mt: 3 }}>📋 计划列表背景</Typography>
+          {planBoxBg.url ? (
+            <ImageEditor
+              imageUrl={planBoxBg.url}
+              onUpdate={(s) => updateBg('planbox', { ...planBoxBg, ...s })}
+              initialScale={planBoxBg.scale} initialPosX={planBoxBg.posX} initialPosY={planBoxBg.posY} initialOpacity={planBoxBg.opacity}
+            />
+          ) : (
+            <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }}>上传列表背景图片<input type="file" hidden accept="image/*" onChange={handleBgUpload('planbox')} /></Button>
+          )}
           <Button variant="contained" fullWidth sx={{ mt: 3 }} onClick={() => setSettingsOpen(false)}>完成</Button>
         </DialogContent>
       </Dialog>
@@ -370,7 +494,7 @@ export default function MobileScheduleView() {
         </DialogContent>
       </Dialog>
 
-      {/* 完成任务 Snackbar */}
+      {/* 完成任务提示 */}
       <Snackbar open={snackbarOpen} autoHideDuration={2000} onClose={() => setSnackbarOpen(false)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
         <Alert severity="success" sx={{ bgcolor: '#4caf50', color: 'white' }}>{snackbarMsg}</Alert>
       </Snackbar>
