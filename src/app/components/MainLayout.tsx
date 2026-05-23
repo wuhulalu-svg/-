@@ -26,17 +26,20 @@ export default function MainLayout() {
   const [sidebarBackground, setSidebarBackground] = useState<string>('');
   const [userName, setUserName] = useState('');
   const [userAvatar, setUserAvatar] = useState('');
+  const [loginBgImage, setLoginBgImage] = useState('');
 
   useEffect(() => {
     const savedBg = localStorage.getItem('appBackgroundImage');
     const savedSidebarBg = localStorage.getItem('sidebarBackgroundImage');
     const savedName = localStorage.getItem('userName');
     const savedAvatar = localStorage.getItem('userAvatar');
+    const savedLoginBg = localStorage.getItem('loginBackgroundImage');
 
     if (savedBg) setBackgroundImage(savedBg);
     if (savedSidebarBg) setSidebarBackground(savedSidebarBg);
     if (savedName) setUserName(savedName);
     if (savedAvatar) setUserAvatar(savedAvatar);
+    if (savedLoginBg) setLoginBgImage(savedLoginBg);
   }, []);
 
   useEffect(() => {
@@ -49,6 +52,7 @@ export default function MainLayout() {
 
       setBackgroundImage(savedBg || bgImage);
       setSidebarBackground(savedSidebarBg || '');
+      setLoginBgImage(savedLoginBg || '');
       setUserName(savedName || '');
       setUserAvatar(savedAvatar || '');
     };
@@ -61,6 +65,24 @@ export default function MainLayout() {
       clearInterval(interval);
     };
   }, []);
+
+  // 底部加号点击处理：根据不同视图触发不同添加事件
+  const handleAddClick = () => {
+    if (selectedView === 'plan') {
+      // 计划视图：打开添加计划对话框
+      window.dispatchEvent(new CustomEvent('openAddPlanDialog'));
+    } else if (selectedView === 'strategy') {
+      // 策略视图：打开添加策略对话框
+      window.dispatchEvent(new CustomEvent('openAddStrategyDialog'));
+    } else if (selectedView === 'schedule') {
+      // 灵感视图：添加待办项（在活跃框框中添加）
+      window.dispatchEvent(new CustomEvent('openAddInspirationItem'));
+    } else {
+      // 其他视图（如 settings）：跳转到计划视图并打开添加计划
+      setSelectedView('plan');
+      window.dispatchEvent(new CustomEvent('openAddPlanDialog'));
+    }
+  };
 
   return (
     <Box
@@ -139,15 +161,7 @@ export default function MainLayout() {
 
         {/* Center Add Button */}
         <Box
-          onClick={() => {
-            if (selectedView === 'plan') {
-              // Trigger add plan dialog
-              const event = new CustomEvent('openAddPlanDialog');
-              window.dispatchEvent(event);
-            } else {
-              setSelectedView('plan');
-            }
-          }}
+          onClick={handleAddClick}
           sx={{
             width: 56,
             height: 56,
@@ -159,9 +173,7 @@ export default function MainLayout() {
             justifyContent: 'center',
             cursor: 'pointer',
             boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-            '&:hover': {
-              bgcolor: '#444',
-            },
+            '&:hover': { bgcolor: '#444' },
           }}
         >
           <AddIcon sx={{ fontSize: 32 }} />
