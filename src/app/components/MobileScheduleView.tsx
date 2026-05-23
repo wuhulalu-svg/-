@@ -48,7 +48,6 @@ export default function MobileScheduleView() {
     const handleOpenDialog = () => {
       setDialogOpen(true);
     };
-
     window.addEventListener('openAddPlanDialog', handleOpenDialog);
     return () => {
       window.removeEventListener('openAddPlanDialog', handleOpenDialog);
@@ -165,7 +164,7 @@ export default function MobileScheduleView() {
 
   return (
     <Box sx={{ bgcolor: '#FAFAFA', minHeight: '100%' }}>
-      {/* Header with background image */}
+      {/* Header */}
       <Box
         sx={{
           bgcolor: 'white',
@@ -179,14 +178,11 @@ export default function MobileScheduleView() {
         }}
       >
         <Stack direction="row" justifyContent="flex-end" alignItems="center" mb={2}>
-          <Stack direction="row" spacing={1}>
-            <IconButton size="small" onClick={() => setSettingsOpen(true)}>
-              <SettingsIcon fontSize="small" />
-            </IconButton>
-          </Stack>
+          <IconButton size="small" onClick={() => setSettingsOpen(true)}>
+            <SettingsIcon fontSize="small" />
+          </IconButton>
         </Stack>
 
-        {/* Date with navigation */}
         <Stack direction="row" alignItems="center" spacing={1} mb={1}>
           <IconButton size="small" onClick={() => changeDate(-1)}>
             <ChevronLeftIcon />
@@ -196,16 +192,7 @@ export default function MobileScheduleView() {
               <Box>
                 <Typography
                   variant="h5"
-                  sx={{
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 0.5,
-                    '&:hover': {
-                      color: 'primary.main',
-                    },
-                  }}
+                  sx={{ fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
                   onClick={() => setDatePickerOpen(true)}
                 >
                   {selectedDate.getFullYear()}年
@@ -213,13 +200,7 @@ export default function MobileScheduleView() {
                 </Typography>
                 <Typography
                   variant="h5"
-                  sx={{
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    '&:hover': {
-                      color: 'primary.main',
-                    },
-                  }}
+                  sx={{ fontWeight: 700, cursor: 'pointer' }}
                   onClick={() => setDatePickerOpen(true)}
                 >
                   {selectedDate.getMonth() + 1}月{selectedDate.getDate()}日
@@ -232,21 +213,12 @@ export default function MobileScheduleView() {
           </IconButton>
         </Stack>
 
-        {/* Week Calendar - Clickable */}
         <Stack direction="row" spacing={1} justifyContent="space-between">
           {dates.map((date, index) => {
             const isToday = date.toDateString() === new Date().toDateString();
             const isSelected = date.toDateString() === selectedDate.toDateString();
             return (
-              <Box
-                key={index}
-                onClick={() => selectSpecificDate(date)}
-                sx={{
-                  textAlign: 'center',
-                  minWidth: 42,
-                  cursor: 'pointer',
-                }}
-              >
+              <Box key={index} onClick={() => selectSpecificDate(date)} sx={{ textAlign: 'center', minWidth: 42, cursor: 'pointer' }}>
                 <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
                   {weekDays[index]}
                 </Typography>
@@ -264,47 +236,24 @@ export default function MobileScheduleView() {
                     mt: 0.5,
                     mx: 'auto',
                     transition: 'all 0.2s',
-                    '&:hover': {
-                      bgcolor: isSelected ? '#333' : alpha('#333', 0.1),
-                    },
+                    '&:hover': { bgcolor: isSelected ? '#333' : alpha('#333', 0.1) },
                   }}
                 >
                   {date.getDate()}
                 </Box>
-                {isToday && (
-                  <Box
-                    sx={{
-                      width: 4,
-                      height: 4,
-                      borderRadius: '50%',
-                      bgcolor: '#FF6B9D',
-                      mx: 'auto',
-                      mt: 0.5,
-                    }}
-                  />
-                )}
+                {isToday && <Box sx={{ width: 4, height: 4, borderRadius: '50%', bgcolor: '#FF6B9D', mx: 'auto', mt: 0.5 }} />}
               </Box>
             );
           })}
         </Stack>
       </Box>
 
-      {/* Category Label */}
       <Box sx={{ p: 2, bgcolor: 'white', borderBottom: '1px solid #f0f0f0' }}>
-        <Typography
-          variant="subtitle1"
-          sx={{
-            fontWeight: 700,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 1,
-          }}
-        >
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 1 }}>
           ≡ 目标和分类
         </Typography>
       </Box>
 
-      {/* Single Plan Display Box */}
       <Box sx={{ p: 2 }}>
         <Card
           sx={{
@@ -320,93 +269,29 @@ export default function MobileScheduleView() {
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
           }}
         >
-          {/* Spiral binding effect */}
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{
-              position: 'absolute',
-              top: 4,
-              left: '50%',
-              transform: 'translateX(-50%)',
-            }}
-          >
+          <Stack direction="row" spacing={1} sx={{ position: 'absolute', top: 4, left: '50%', transform: 'translateX(-50%)' }}>
             {[1, 2, 3, 4, 5].map((i) => (
-              <Box
-                key={i}
-                sx={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  bgcolor: alpha('#000', 0.3),
-                }}
-              />
+              <Box key={i} sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: alpha('#000', 0.3) }} />
             ))}
           </Stack>
 
-          {/* Plans List */}
           <Box sx={{ mt: 2 }}>
             {plans.length > 0 ? (
               <Stack spacing={1.5}>
                 {plans.map((plan) => (
-                  <Box
-                    key={plan.id}
-                    sx={{
-                      p: 1.5,
-                      borderRadius: 2,
-                      bgcolor: plan.completed ? alpha('#4CAF50', 0.1) : alpha('#000', 0.02),
-                      border: '1px solid',
-                      borderColor: plan.completed ? '#4CAF50' : '#E0E0E0',
-                      transition: 'all 0.2s',
-                    }}
-                  >
+                  <Box key={plan.id} sx={{ p: 1.5, borderRadius: 2, bgcolor: plan.completed ? alpha('#4CAF50', 0.1) : alpha('#000', 0.02), border: '1px solid', borderColor: plan.completed ? '#4CAF50' : '#E0E0E0' }}>
                     <Stack direction="row" spacing={1.5} alignItems="center">
-                      <Checkbox
-                        checked={plan.completed}
-                        onChange={() => togglePlan(plan.id)}
-                        size="small"
-                        sx={{ p: 0 }}
-                      />
-                      <Stack
-                        direction="row"
-                        spacing={1}
-                        alignItems="center"
-                        sx={{
-                          px: 1,
-                          py: 0.5,
-                          borderRadius: 1,
-                          bgcolor: alpha('#6366f1', 0.1),
-                          border: '1px solid',
-                          borderColor: alpha('#6366f1', 0.3),
-                        }}
-                      >
+                      <Checkbox checked={plan.completed} onChange={() => togglePlan(plan.id)} size="small" sx={{ p: 0 }} />
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 1, py: 0.5, borderRadius: 1, bgcolor: alpha('#6366f1', 0.1), border: '1px solid', borderColor: alpha('#6366f1', 0.3) }}>
                         <TimeIcon sx={{ fontSize: 14, color: 'primary.main' }} />
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            fontFamily: 'monospace',
-                            fontWeight: 600,
-                            color: 'primary.main',
-                          }}
-                        >
+                        <Typography variant="caption" sx={{ fontFamily: 'monospace', fontWeight: 600, color: 'primary.main' }}>
                           {plan.startTime} - {plan.endTime}
                         </Typography>
                       </Stack>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          flex: 1,
-                          textDecoration: plan.completed ? 'line-through' : 'none',
-                          opacity: plan.completed ? 0.6 : 1,
-                        }}
-                      >
+                      <Typography variant="body2" sx={{ flex: 1, textDecoration: plan.completed ? 'line-through' : 'none', opacity: plan.completed ? 0.6 : 1 }}>
                         {plan.content}
                       </Typography>
-                      <IconButton
-                        size="small"
-                        onClick={() => deletePlan(plan.id)}
-                        sx={{ color: 'error.main' }}
-                      >
+                      <IconButton size="small" onClick={() => deletePlan(plan.id)} sx={{ color: 'error.main' }}>
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     </Stack>
@@ -414,30 +299,21 @@ export default function MobileScheduleView() {
                 ))}
               </Stack>
             ) : (
-              <Stack
-                alignItems="center"
-                justifyContent="center"
-                sx={{ height: 300, opacity: 0.4 }}
-              >
+              <Stack alignItems="center" justifyContent="center" sx={{ height: 300, opacity: 0.4 }}>
                 <Box sx={{ fontSize: 60, mb: 2, opacity: 0.3 }}>📝</Box>
-                <Typography variant="body2" color="text.secondary">
-                  点击底部加号添加计划
-                </Typography>
+                <Typography variant="body2" color="text.secondary">点击底部加号添加计划</Typography>
               </Stack>
             )}
           </Box>
         </Card>
       </Box>
 
-      {/* Add Plan Dialog */}
+      {/* 添加计划 Dialog - 改进后的时间选择器 */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm">
         <DialogContent>
-          <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>
-            ➕ 添加计划
-          </Typography>
-
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>📅 添加计划</Typography>
           <Stack spacing={2.5}>
-            <Stack direction="row" spacing={2}>
+            <Stack direction="row" spacing={2} alignItems="center">
               <TextField
                 type="time"
                 label="开始时间"
@@ -446,6 +322,7 @@ export default function MobileScheduleView() {
                 InputLabelProps={{ shrink: true }}
                 sx={{ flex: 1 }}
               />
+              <Typography variant="body2" color="text.secondary">—</Typography>
               <TextField
                 type="time"
                 label="结束时间"
@@ -455,7 +332,6 @@ export default function MobileScheduleView() {
                 sx={{ flex: 1 }}
               />
             </Stack>
-
             <TextField
               fullWidth
               multiline
@@ -465,154 +341,55 @@ export default function MobileScheduleView() {
               value={newPlanContent}
               onChange={(e) => setNewPlanContent(e.target.value)}
             />
-
             <Stack direction="row" spacing={2}>
-              <Button
-                variant="outlined"
-                onClick={() => setDialogOpen(false)}
-                sx={{ flex: 1, textTransform: 'none' }}
-              >
-                取消
-              </Button>
-              <Button
-                variant="contained"
-                onClick={addPlan}
-                disabled={!newPlanContent.trim()}
-                sx={{ flex: 1, textTransform: 'none' }}
-              >
-                添加
-              </Button>
+              <Button variant="outlined" onClick={() => setDialogOpen(false)} sx={{ flex: 1, textTransform: 'none' }}>取消</Button>
+              <Button variant="contained" onClick={addPlan} disabled={!newPlanContent.trim()} sx={{ flex: 1, textTransform: 'none' }}>添加</Button>
             </Stack>
           </Stack>
         </DialogContent>
       </Dialog>
 
-      {/* Date Picker Dialog */}
+      {/* 日期选择 Dialog */}
       <Dialog open={datePickerOpen} onClose={() => setDatePickerOpen(false)} maxWidth="sm" fullWidth>
         <DialogContent>
-          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-            📅 选择日期
-          </Typography>
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>📅 选择日期</Typography>
           <Box>
             <input
               type="date"
               value={selectedDate.toISOString().split('T')[0]}
-              onChange={(e) => {
-                const newDate = new Date(e.target.value);
-                selectSpecificDate(newDate);
-              }}
-              style={{
-                width: '100%',
-                padding: '12px',
-                fontSize: '16px',
-                borderRadius: '8px',
-                border: '2px solid #E0E0E0',
-                fontFamily: 'inherit',
-              }}
+              onChange={(e) => { const newDate = new Date(e.target.value); selectSpecificDate(newDate); }}
+              style={{ width: '100%', padding: '12px', fontSize: '16px', borderRadius: '8px', border: '2px solid #E0E0E0', fontFamily: 'inherit' }}
             />
           </Box>
           <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
-            <Button
-              variant="outlined"
-              onClick={() => {
-                selectSpecificDate(new Date());
-              }}
-              sx={{ flex: 1, textTransform: 'none' }}
-            >
-              今天
-            </Button>
-            <Button
-              variant="contained"
-              onClick={() => setDatePickerOpen(false)}
-              sx={{ flex: 1, textTransform: 'none' }}
-            >
-              确定
-            </Button>
+            <Button variant="outlined" onClick={() => selectSpecificDate(new Date())} sx={{ flex: 1, textTransform: 'none' }}>今天</Button>
+            <Button variant="contained" onClick={() => setDatePickerOpen(false)} sx={{ flex: 1, textTransform: 'none' }}>确定</Button>
           </Stack>
         </DialogContent>
       </Dialog>
 
-      {/* Settings Dialog */}
+      {/* 背景设置 Dialog */}
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} fullWidth maxWidth="sm">
         <DialogContent>
-          <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>
-            ⚙️ 背景设置
-          </Typography>
-
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>⚙️ 背景设置</Typography>
           <Stack spacing={3}>
             <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5 }}>
-                顶部区域背景
-              </Typography>
-              <Button
-                variant="outlined"
-                component="label"
-                fullWidth
-                sx={{ textTransform: 'none' }}
-              >
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5 }}>顶部区域背景</Typography>
+              <Button variant="outlined" component="label" fullWidth sx={{ textTransform: 'none' }}>
                 {headerBgImage ? '更换背景图片' : '上传背景图片'}
-                <input
-                  type="file"
-                  hidden
-                  accept="image/*"
-                  onChange={handleHeaderBgUpload}
-                />
+                <input type="file" hidden accept="image/*" onChange={handleHeaderBgUpload} />
               </Button>
-              {headerBgImage && (
-                <Box
-                  sx={{
-                    mt: 2,
-                    height: 100,
-                    borderRadius: 2,
-                    backgroundImage: `url(${headerBgImage})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    border: '1px solid #E0E0E0',
-                  }}
-                />
-              )}
+              {headerBgImage && <Box sx={{ mt: 2, height: 100, borderRadius: 2, backgroundImage: `url(${headerBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center', border: '1px solid #E0E0E0' }} />}
             </Box>
-
             <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5 }}>
-                计划列表背景
-              </Typography>
-              <Button
-                variant="outlined"
-                component="label"
-                fullWidth
-                sx={{ textTransform: 'none' }}
-              >
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5 }}>计划列表背景</Typography>
+              <Button variant="outlined" component="label" fullWidth sx={{ textTransform: 'none' }}>
                 {planBoxBgImage ? '更换背景图片' : '上传背景图片'}
-                <input
-                  type="file"
-                  hidden
-                  accept="image/*"
-                  onChange={handlePlanBoxBgUpload}
-                />
+                <input type="file" hidden accept="image/*" onChange={handlePlanBoxBgUpload} />
               </Button>
-              {planBoxBgImage && (
-                <Box
-                  sx={{
-                    mt: 2,
-                    height: 100,
-                    borderRadius: 2,
-                    backgroundImage: `url(${planBoxBgImage})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    border: '1px solid #E0E0E0',
-                  }}
-                />
-              )}
+              {planBoxBgImage && <Box sx={{ mt: 2, height: 100, borderRadius: 2, backgroundImage: `url(${planBoxBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center', border: '1px solid #E0E0E0' }} />}
             </Box>
-
-            <Button
-              variant="contained"
-              onClick={() => setSettingsOpen(false)}
-              sx={{ textTransform: 'none' }}
-            >
-              完成
-            </Button>
+            <Button variant="contained" onClick={() => setSettingsOpen(false)} sx={{ textTransform: 'none' }}>完成</Button>
           </Stack>
         </DialogContent>
       </Dialog>
