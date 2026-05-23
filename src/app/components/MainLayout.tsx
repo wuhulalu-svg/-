@@ -7,8 +7,8 @@ import {
   IconButton,
 } from '@mui/material';
 import {
-  CalendarMonth as CalendarIcon,
-  Psychology as StrategyIcon,
+  CalendarMonth as CalendarMonthIcon,
+  Psychology as PsychologyIcon,
   Add as AddIcon,
 } from '@mui/icons-material';
 import StrategySettings from './StrategySettings';
