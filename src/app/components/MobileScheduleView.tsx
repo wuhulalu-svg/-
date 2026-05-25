@@ -297,24 +297,27 @@ export default function MobileScheduleView() {
       {/* 头部区域 */}
       <Box sx={{ position: 'relative' }}>
         {/* 头部背景层 */}
-        {headerBg.url && (
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundImage: `url(${headerBg.url})`,
-              backgroundSize: `${headerBg.scale}%`,
-              backgroundPosition: `${headerBg.posX}% ${headerBg.posY}%`,
-              backgroundRepeat: 'no-repeat',
-              opacity: headerBg.opacity / 100,
-              zIndex: 0,
-              pointerEvents: 'none',
-            }}
-          />
-        )}
+       {headerBg.url && (
+  <Box
+    sx={{
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundImage: `url(${headerBg.url})`,
+      backgroundSize: `${headerBg.scale}%`,
+      backgroundPosition: `${headerBg.posX}% ${headerBg.posY}%`,
+      backgroundRepeat: 'no-repeat',
+      // 关键：直接使用图片，不再叠加 opacity，而是由图片本身的透明度决定
+      // 如果需要透明度，应该在图片编辑器中调整，而不是用 CSS opacity
+      // 所以移除 opacity 属性，或者设置为 1
+      opacity: 1,
+      zIndex: 0,
+      pointerEvents: 'none',
+    }}
+  />
+)}
         {/* 头部内容 */}
         <Box sx={{ position: 'relative', zIndex: 1, p: 2, borderBottom: '1px solid #f0f0f0', bgcolor: 'rgba(255,255,255,0.9)' }}>
           <Stack direction="row" justifyContent="flex-end" spacing={1} mb={2}>
