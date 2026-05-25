@@ -155,7 +155,6 @@ export default function MobileScheduleView() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
-  // 简单时间选择器（字符串格式 HH:MM）
   const [newPlanStartTime, setNewPlanStartTime] = useState('09:00');
   const [newPlanEndTime, setNewPlanEndTime] = useState('10:00');
   const [newPlanContent, setNewPlanContent] = useState('');
@@ -163,42 +162,80 @@ export default function MobileScheduleView() {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState('');
 
-  // 背景设置状态
-  const [globalBg, setGlobalBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
+  // 实际生效的背景设置
   const [headerBg, setHeaderBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
   const [planBoxBg, setPlanBoxBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
 
+  // 临时状态（用于设置弹窗中编辑，点确定后才写入实际状态）
+  const [tempHeaderBg, setTempHeaderBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
+  const [tempPlanBoxBg, setTempPlanBoxBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
+
   useEffect(() => {
     const savedPlans = localStorage.getItem('dailyPlansV2');
-    const savedGlobal = localStorage.getItem('planGlobalBg');
     const savedHeader = localStorage.getItem('planHeaderBg');
     const savedPlanBox = localStorage.getItem('planBoxBg');
     if (savedPlans) setAllPlans(JSON.parse(savedPlans));
-    if (savedGlobal) setGlobalBg(JSON.parse(savedGlobal));
-    if (savedHeader) setHeaderBg(JSON.parse(savedHeader));
-    if (savedPlanBox) setPlanBoxBg(JSON.parse(savedPlanBox));
+    if (savedHeader) {
+      const parsed = JSON.parse(savedHeader);
+      setHeaderBg(parsed);
+      setTempHeaderBg(parsed);
+    }
+    if (savedPlanBox) {
+      const parsed = JSON.parse(savedPlanBox);
+      setPlanBoxBg(parsed);
+      setTempPlanBoxBg(parsed);
+    }
   }, []);
 
   useEffect(() => {
     localStorage.setItem('dailyPlansV2', JSON.stringify(allPlans));
   }, [allPlans]);
 
-  const updateBg = (type: 'global' | 'header' | 'planbox', newSettings: any) => {
-    if (type === 'global') setGlobalBg(newSettings);
-    else if (type === 'header') setHeaderBg(newSettings);
-    else setPlanBoxBg(newSettings);
-    localStorage.setItem(type === 'global' ? 'planGlobalBg' : type === 'header' ? 'planHeaderBg' : 'planBoxBg', JSON.stringify(newSettings));
+  // 打开设置弹窗时，将当前背景复制到临时状态
+  const openSettings = () => {
+    setTempHeaderBg({ ...headerBg });
+    setTempPlanBoxBg({ ...planBoxBg });
+    setSettingsOpen(true);
   };
 
-  const handleBgUpload = (type: 'global' | 'header' | 'planbox') => (e: React.ChangeEvent<HTMLInputElement>) => {
+  // 确认应用背景设置
+  const applyBgSettings = () => {
+    setHeaderBg(tempHeaderBg);
+    setPlanBoxBg(tempPlanBoxBg);
+    localStorage.setItem('planHeaderBg', JSON.stringify(tempHeaderBg));
+    localStorage.setItem('planBoxBg', JSON.stringify(tempPlanBoxBg));
+    setSettingsOpen(false);
+  };
+
+  // 取消设置，丢弃临时更改
+  const cancelBgSettings = () => {
+    setSettingsOpen(false);
+  };
+
+  // 上传图片到临时背景
+  const handleTempBgUpload = (type: 'header' | 'planbox') => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
       const url = ev.target?.result as string;
-      updateBg(type, { url, scale: 100, posX: 50, posY: 50, opacity: 100 });
+      const newSettings = { url, scale: 100, posX: 50, posY: 50, opacity: 100 };
+      if (type === 'header') {
+        setTempHeaderBg(newSettings);
+      } else {
+        setTempPlanBoxBg(newSettings);
+      }
     };
     reader.readAsDataURL(file);
+  };
+
+  // 更新临时背景的调整参数
+  const updateTempBg = (type: 'header' | 'planbox', updates: any) => {
+    if (type === 'header') {
+      setTempHeaderBg({ ...tempHeaderBg, ...updates });
+    } else {
+      setTempPlanBoxBg({ ...tempPlanBoxBg, ...updates });
+    }
   };
 
   // 监听底部加号事件
@@ -259,25 +296,7 @@ export default function MobileScheduleView() {
   });
 
   return (
-    <Box sx={{ position: 'relative', minHeight: '100%' }}>
-      {/* 整体背景层 */}
-      {globalBg.url && (
-        <Box
-          sx={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundImage: `url(${globalBg.url})`,
-            backgroundSize: `${globalBg.scale}%`,
-            backgroundPosition: `${globalBg.posX}% ${globalBg.posY}%`,
-            backgroundRepeat: 'no-repeat',
-            opacity: globalBg.opacity / 100,
-            zIndex: 0,
-          }}
-        />
-      )}
+    <Box sx={{ position: 'relative', minHeight: '100%', bgcolor: '#FAFAFA' }}>
       <Box sx={{ position: 'relative', zIndex: 1 }}>
         {/* 头部区域背景 */}
         <Box
@@ -292,7 +311,7 @@ export default function MobileScheduleView() {
         >
           <Stack direction="row" justifyContent="flex-end" spacing={1} mb={2}>
             <IconButton size="small" onClick={() => setInfoOpen(true)}><InfoIcon fontSize="small" /></IconButton>
-            <IconButton size="small" onClick={() => setSettingsOpen(true)}><SettingsIcon fontSize="small" /></IconButton>
+            <IconButton size="small" onClick={openSettings}><SettingsIcon fontSize="small" /></IconButton>
           </Stack>
           <Stack direction="row" alignItems="center" spacing={1}>
             <IconButton size="small" onClick={() => changeDate(-1)}><ChevronLeft /></IconButton>
@@ -356,7 +375,7 @@ export default function MobileScheduleView() {
           </Card>
         </Box>
 
-        {/* 添加计划对话框 - 简单时间选择器 */}
+        {/* 添加计划对话框 */}
         <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
           <DialogContent>
             <Typography variant="h6" fontWeight={700} mb={3}>📅 添加计划</Typography>
@@ -411,45 +430,43 @@ export default function MobileScheduleView() {
           </DialogContent>
         </Dialog>
 
-        {/* 背景设置对话框 */}
-        <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="md" fullWidth>
+        {/* 背景设置对话框 - 无整体背景，只有顶部和列表背景，点确定才保存 */}
+        <Dialog open={settingsOpen} onClose={cancelBgSettings} maxWidth="md" fullWidth>
           <DialogContent>
             <Typography variant="h6" fontWeight={700} mb={2}>⚙️ 背景设置</Typography>
 
-            <Typography variant="subtitle2" sx={{ mt: 2 }}>🌍 整体背景</Typography>
-            {globalBg.url ? (
+            <Typography variant="subtitle2" sx={{ mt: 2 }}>顶部区域背景</Typography>
+            {tempHeaderBg.url ? (
               <ImageEditor
-                imageUrl={globalBg.url}
-                onUpdate={(s) => updateBg('global', { ...globalBg, ...s })}
-                initialScale={globalBg.scale} initialPosX={globalBg.posX} initialPosY={globalBg.posY} initialOpacity={globalBg.opacity}
+                imageUrl={tempHeaderBg.url}
+                onUpdate={(updates) => updateTempBg('header', updates)}
+                initialScale={tempHeaderBg.scale}
+                initialPosX={tempHeaderBg.posX}
+                initialPosY={tempHeaderBg.posY}
+                initialOpacity={tempHeaderBg.opacity}
               />
             ) : (
-              <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }}>上传整体背景图片<input type="file" hidden accept="image/*" onChange={handleBgUpload('global')} /></Button>
+              <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }}>上传顶部背景图片<input type="file" hidden accept="image/*" onChange={handleTempBgUpload('header')} /></Button>
             )}
 
-            <Typography variant="subtitle2" sx={{ mt: 3 }}>📌 顶部区域背景</Typography>
-            {headerBg.url ? (
+            <Typography variant="subtitle2" sx={{ mt: 3 }}>计划列表背景</Typography>
+            {tempPlanBoxBg.url ? (
               <ImageEditor
-                imageUrl={headerBg.url}
-                onUpdate={(s) => updateBg('header', { ...headerBg, ...s })}
-                initialScale={headerBg.scale} initialPosX={headerBg.posX} initialPosY={headerBg.posY} initialOpacity={headerBg.opacity}
+                imageUrl={tempPlanBoxBg.url}
+                onUpdate={(updates) => updateTempBg('planbox', updates)}
+                initialScale={tempPlanBoxBg.scale}
+                initialPosX={tempPlanBoxBg.posX}
+                initialPosY={tempPlanBoxBg.posY}
+                initialOpacity={tempPlanBoxBg.opacity}
               />
             ) : (
-              <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }}>上传顶部背景图片<input type="file" hidden accept="image/*" onChange={handleBgUpload('header')} /></Button>
+              <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }}>上传列表背景图片<input type="file" hidden accept="image/*" onChange={handleTempBgUpload('planbox')} /></Button>
             )}
 
-            <Typography variant="subtitle2" sx={{ mt: 3 }}>📋 计划列表背景</Typography>
-            {planBoxBg.url ? (
-              <ImageEditor
-                imageUrl={planBoxBg.url}
-                onUpdate={(s) => updateBg('planbox', { ...planBoxBg, ...s })}
-                initialScale={planBoxBg.scale} initialPosX={planBoxBg.posX} initialPosY={planBoxBg.posY} initialOpacity={planBoxBg.opacity}
-              />
-            ) : (
-              <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }}>上传列表背景图片<input type="file" hidden accept="image/*" onChange={handleBgUpload('planbox')} /></Button>
-            )}
-
-            <Button variant="contained" fullWidth sx={{ mt: 3 }} onClick={() => setSettingsOpen(false)}>完成</Button>
+            <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
+              <Button variant="outlined" onClick={cancelBgSettings} sx={{ flex: 1 }}>取消</Button>
+              <Button variant="contained" onClick={applyBgSettings} sx={{ flex: 1 }}>确定</Button>
+            </Stack>
           </DialogContent>
         </Dialog>
 
