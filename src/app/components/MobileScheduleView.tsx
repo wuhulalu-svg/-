@@ -6,6 +6,7 @@ import {
 import {
   Settings as SettingsIcon, Delete as DeleteIcon, AccessTime as TimeIcon,
   ChevronLeft, ChevronRight, CalendarToday as CalendarIcon, Info as InfoIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 
 // ---------- 图片编辑器 ----------
@@ -190,6 +191,7 @@ export default function MobileScheduleView() {
   const [tempHeaderBg, setTempHeaderBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
   const [tempPlanBoxBg, setTempPlanBoxBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
 
+  // 加载保存的数据
   useEffect(() => {
     const savedPlans = localStorage.getItem('dailyPlansV2');
     const savedHeader = localStorage.getItem('planHeaderBg');
@@ -207,6 +209,7 @@ export default function MobileScheduleView() {
     }
   }, []);
 
+  // 自动保存计划到 localStorage
   useEffect(() => {
     localStorage.setItem('dailyPlansV2', JSON.stringify(allPlans));
   }, [allPlans]);
@@ -217,36 +220,6 @@ export default function MobileScheduleView() {
     setSettingsOpen(true);
   };
 
-  const applyHeaderBg = () => {
-    setHeaderBg(tempHeaderBg);
-    localStorage.setItem('planHeaderBg', JSON.stringify(tempHeaderBg));
-    setBgSnackbarMsg('已成功设置喵(๑˃ᴗ˂)ﻭ♡');
-    setBgSnackbarOpen(true);
-    setTimeout(() => setBgSnackbarOpen(false), 1500);
-  };
-
-  const cancelHeaderBg = () => {
-    setTempHeaderBg({ ...headerBg });
-    setBgSnackbarMsg('已取消了~嘿嘿~(*ˊᗜˋ*)');
-    setBgSnackbarOpen(true);
-    setTimeout(() => setBgSnackbarOpen(false), 1500);
-  };
-
-  const applyPlanBoxBg = () => {
-    setPlanBoxBg(tempPlanBoxBg);
-    localStorage.setItem('planBoxBg', JSON.stringify(tempPlanBoxBg));
-    setBgSnackbarMsg('已成功设置喵(๑˃ᴗ˂)ﻭ♡');
-    setBgSnackbarOpen(true);
-    setTimeout(() => setBgSnackbarOpen(false), 1500);
-  };
-
-  const cancelPlanBoxBg = () => {
-    setTempPlanBoxBg({ ...planBoxBg });
-    setBgSnackbarMsg('已取消了~嘿嘿~(*ˊᗜˋ*)');
-    setBgSnackbarOpen(true);
-    setTimeout(() => setBgSnackbarOpen(false), 1500);
-  };
-
   const updateTempHeader = (updates: any) => {
     setTempHeaderBg({ ...tempHeaderBg, ...updates });
   };
@@ -254,6 +227,7 @@ export default function MobileScheduleView() {
     setTempPlanBoxBg({ ...tempPlanBoxBg, ...updates });
   };
 
+  // 监听底部加号
   useEffect(() => {
     const handleOpenDialog = () => setDialogOpen(true);
     window.addEventListener('openAddPlanDialog', handleOpenDialog);
@@ -478,10 +452,15 @@ export default function MobileScheduleView() {
         </DialogContent>
       </Dialog>
 
-      {/* 背景设置对话框 */}
+      {/* 背景设置对话框 - 带关闭按钮 + 独立确定取消反馈 */}
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="sm" fullWidth>
         <DialogContent sx={{ p: 2 }}>
-          <Typography variant="h6" fontWeight={700} mb={2}>⚙️ 背景设置</Typography>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+            <Typography variant="h6" fontWeight={700}>⚙️ 背景设置</Typography>
+            <IconButton size="small" onClick={() => setSettingsOpen(false)}>
+              <CloseIcon />
+            </IconButton>
+          </Stack>
 
           {/* 顶部区域背景区块 */}
           <Box sx={{ mb: 4, borderBottom: '1px solid #eee', pb: 2 }}>
@@ -511,8 +490,19 @@ export default function MobileScheduleView() {
               </Button>
             )}
             <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-              <Button variant="contained" onClick={applyHeaderBg} sx={{ flex: 1 }}>确定</Button>
-              <Button variant="outlined" onClick={cancelHeaderBg} sx={{ flex: 1 }}>取消</Button>
+              <Button variant="contained" onClick={() => {
+                setHeaderBg(tempHeaderBg);
+                localStorage.setItem('planHeaderBg', JSON.stringify(tempHeaderBg));
+                setBgSnackbarMsg('已成功设置喵(๑˃ᴗ˂)ﻭ♡');
+                setBgSnackbarOpen(true);
+                setTimeout(() => setBgSnackbarOpen(false), 1500);
+              }} sx={{ flex: 1 }}>确定</Button>
+              <Button variant="outlined" onClick={() => {
+                setTempHeaderBg({ ...headerBg });
+                setBgSnackbarMsg('已取消了~嘿嘿~(*ˊᗜˋ*)');
+                setBgSnackbarOpen(true);
+                setTimeout(() => setBgSnackbarOpen(false), 1500);
+              }} sx={{ flex: 1 }}>取消</Button>
             </Stack>
           </Box>
 
@@ -544,8 +534,19 @@ export default function MobileScheduleView() {
               </Button>
             )}
             <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-              <Button variant="contained" onClick={applyPlanBoxBg} sx={{ flex: 1 }}>确定</Button>
-              <Button variant="outlined" onClick={cancelPlanBoxBg} sx={{ flex: 1 }}>取消</Button>
+              <Button variant="contained" onClick={() => {
+                setPlanBoxBg(tempPlanBoxBg);
+                localStorage.setItem('planBoxBg', JSON.stringify(tempPlanBoxBg));
+                setBgSnackbarMsg('已成功设置喵(๑˃ᴗ˂)ﻭ♡');
+                setBgSnackbarOpen(true);
+                setTimeout(() => setBgSnackbarOpen(false), 1500);
+              }} sx={{ flex: 1 }}>确定</Button>
+              <Button variant="outlined" onClick={() => {
+                setTempPlanBoxBg({ ...planBoxBg });
+                setBgSnackbarMsg('已取消了~嘿嘿~(*ˊᗜˋ*)');
+                setBgSnackbarOpen(true);
+                setTimeout(() => setBgSnackbarOpen(false), 1500);
+              }} sx={{ flex: 1 }}>取消</Button>
             </Stack>
           </Box>
         </DialogContent>
