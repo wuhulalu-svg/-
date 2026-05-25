@@ -8,10 +8,153 @@ import {
   ChevronLeft, ChevronRight, CalendarToday as CalendarIcon, Info as InfoIcon,
 } from '@mui/icons-material';
 
-// 图片编辑器组件（保持不变）
+// ---------- 图片编辑器 ----------
 function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50, initialPosY = 50, initialOpacity = 100 }) {
-  // ... 内容与之前相同，为避免重复，这里省略，实际使用时请保留完整代码
-  // 确保包含 handleChangeImage、滑块事件等
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(initialScale);
+  const [posX, setPosX] = useState(initialPosX);
+  const [posY, setPosY] = useState(initialPosY);
+  const [opacity, setOpacity] = useState(initialOpacity);
+  const [isDragging, setIsDragging] = useState(false);
+  const lastPos = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const img = new Image();
+    img.src = imageUrl;
+    img.onload = () => {
+      const w = canvas.width = container.clientWidth;
+      const h = canvas.height = container.clientHeight;
+      ctx.clearRect(0, 0, w, h);
+      ctx.globalAlpha = opacity / 100;
+      const scaleVal = scale / 100;
+      const drawW = w * scaleVal;
+      const drawH = h * scaleVal;
+      const dx = (posX / 100) * (w - drawW);
+      const dy = (posY / 100) * (h - drawH);
+      ctx.drawImage(img, dx, dy, drawW, drawH);
+      ctx.globalAlpha = 1;
+    };
+  }, [imageUrl, scale, posX, opacity]);
+
+  const startDrag = (clientX, clientY) => {
+    setIsDragging(true);
+    lastPos.current = { x: clientX, y: clientY };
+  };
+  const onDrag = (clientX, clientY) => {
+    if (!isDragging) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const deltaX = (clientX - lastPos.current.x) * scaleX;
+    const deltaY = (clientY - lastPos.current.y) * scaleY;
+    const w = canvas.width;
+    const h = canvas.height;
+    const scaleVal = scale / 100;
+    const drawW = w * scaleVal;
+    const drawH = h * scaleVal;
+    const maxDeltaX = (w - drawW) / 2;
+    const maxDeltaY = (h - drawH) / 2;
+    let newPosX = posX + (deltaX / maxDeltaX) * 50;
+    let newPosY = posY + (deltaY / maxDeltaY) * 50;
+    newPosX = Math.min(100, Math.max(0, newPosX));
+    newPosY = Math.min(100, Math.max(0, newPosY));
+    setPosX(newPosX);
+    setPosY(newPosY);
+    lastPos.current = { x: clientX, y: clientY };
+    onUpdate({ scale, posX: newPosX, posY: newPosY, opacity });
+  };
+  const endDrag = () => setIsDragging(false);
+
+  const handleMouseDown = (e) => startDrag(e.clientX, e.clientY);
+  const handleMouseMove = (e) => onDrag(e.clientX, e.clientY);
+  const handleMouseUp = () => endDrag();
+  const handleTouchStart = (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    startDrag(touch.clientX, touch.clientY);
+  };
+  const handleTouchMove = (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    onDrag(touch.clientX, touch.clientY);
+  };
+  const handleTouchEnd = (e) => {
+    e.preventDefault();
+    endDrag();
+  };
+
+  const handleScaleSlider = (e) => {
+    const newScale = Number(e.target.value);
+    setScale(newScale);
+    onUpdate({ scale: newScale, posX, posY, opacity });
+  };
+  const handleOpacitySlider = (e) => {
+    const newOpacity = Number(e.target.value);
+    setOpacity(newOpacity);
+    onUpdate({ scale, posX, posY, opacity: newOpacity });
+  };
+
+  const handleChangeImage = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e: any) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const newUrl = ev.target?.result as string;
+        setScale(100);
+        setPosX(50);
+        setPosY(50);
+        setOpacity(100);
+        onUpdate({ url: newUrl, scale: 100, posX: 50, posY: 50, opacity: 100 });
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
+
+  return (
+    <Box sx={{ width: '100%', maxWidth: 400, mx: 'auto' }}>
+      <Box ref={containerRef} sx={{ width: '100%', aspectRatio: '3/4', border: '1px solid #ccc', borderRadius: 2, overflow: 'hidden', touchAction: 'none' }}>
+        <canvas
+          ref={canvasRef}
+          style={{ width: '100%', height: '100%', display: 'block' }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        />
+      </Box>
+      <Typography variant="caption" display="block" sx={{ mt: 1, textAlign: 'center' }}>
+        手指拖动移动图片，下方滑块缩放/透明度
+      </Typography>
+      <Stack direction="column" spacing={1} sx={{ mt: 1 }}>
+        <Box>
+          <Typography variant="caption">缩放 ({scale}%)</Typography>
+          <input type="range" min={50} max={200} step={1} value={scale} onChange={handleScaleSlider} style={{ width: '100%' }} />
+        </Box>
+        <Box>
+          <Typography variant="caption">透明度 ({opacity}%)</Typography>
+          <input type="range" min={0} max={100} step={1} value={opacity} onChange={handleOpacitySlider} style={{ width: '100%' }} />
+        </Box>
+      </Stack>
+      <Button variant="outlined" size="small" fullWidth sx={{ mt: 1 }} onClick={handleChangeImage}>
+        更换图片
+      </Button>
+    </Box>
+  );
 }
 
 interface Plan {
@@ -72,17 +215,18 @@ export default function MobileScheduleView() {
 
   // 顶部背景：确定
   const applyHeaderBg = () => {
-    setHeaderBg({ ...tempHeaderBg });
+    setHeaderBg(tempHeaderBg);
     localStorage.setItem('planHeaderBg', JSON.stringify(tempHeaderBg));
+    // 可选：弹窗不关闭，但用户需要手动关闭整个设置弹窗或继续调整其他项
   };
-  // 顶部背景：取消
+  // 顶部背景：取消（丢弃临时修改）
   const cancelHeaderBg = () => {
     setTempHeaderBg({ ...headerBg });
   };
 
   // 计划列表背景：确定
   const applyPlanBoxBg = () => {
-    setPlanBoxBg({ ...tempPlanBoxBg });
+    setPlanBoxBg(tempPlanBoxBg);
     localStorage.setItem('planBoxBg', JSON.stringify(tempPlanBoxBg));
   };
   // 计划列表背景：取消
@@ -325,12 +469,12 @@ export default function MobileScheduleView() {
         </DialogContent>
       </Dialog>
 
-      {/* 背景设置对话框 */}
+      {/* 背景设置对话框 - 独立确定/取消，并有关闭按钮 */}
       <Dialog open={settingsOpen} onClose={closeSettings} maxWidth="sm" fullWidth>
         <DialogContent sx={{ p: 2 }}>
           <Typography variant="h6" fontWeight={700} mb={2}>⚙️ 背景设置</Typography>
 
-          {/* 顶部区域背景 */}
+          {/* 顶部区域背景区块 */}
           <Box sx={{ mb: 4, borderBottom: '1px solid #eee', pb: 2 }}>
             <Typography variant="subtitle2" fontWeight={600} gutterBottom>顶部区域背景</Typography>
             {tempHeaderBg.url ? (
@@ -363,7 +507,7 @@ export default function MobileScheduleView() {
             </Stack>
           </Box>
 
-          {/* 计划列表背景 */}
+          {/* 计划列表背景区块 */}
           <Box>
             <Typography variant="subtitle2" fontWeight={600} gutterBottom>计划列表背景</Typography>
             {tempPlanBoxBg.url ? (
