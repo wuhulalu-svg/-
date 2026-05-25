@@ -8,7 +8,7 @@ import {
   ChevronLeft, ChevronRight, CalendarToday as CalendarIcon, Info as InfoIcon,
 } from '@mui/icons-material';
 
-// 图片编辑器（支持触摸拖动、缩放、透明度，实时预览，可更换图片）
+// ---------- 图片编辑器（支持触摸拖动、缩放、透明度，实时预览） ----------
 function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50, initialPosY = 50, initialOpacity = 100 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -19,6 +19,7 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
   const [isDragging, setIsDragging] = useState(false);
   const lastPos = useRef({ x: 0, y: 0 });
 
+  // 绘制图片
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -42,6 +43,7 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
     };
   }, [imageUrl, scale, posX, opacity]);
 
+  // 拖动逻辑（鼠标/触摸）
   const startDrag = (clientX, clientY) => {
     setIsDragging(true);
     lastPos.current = { x: clientX, y: clientY };
@@ -91,6 +93,7 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
     endDrag();
   };
 
+  // 滑块控制
   const handleScaleSlider = (e) => {
     const newScale = Number(e.target.value);
     setScale(newScale);
@@ -102,6 +105,7 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
     onUpdate({ scale, posX, posY, opacity: newOpacity });
   };
 
+  // 更换图片
   const handleChangeImage = () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -157,6 +161,7 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
   );
 }
 
+// ---------- 计划接口 ----------
 interface Plan {
   id: string;
   startTime: string;
@@ -296,30 +301,27 @@ export default function MobileScheduleView() {
     <Box sx={{ position: 'relative', minHeight: '100%', bgcolor: '#FAFAFA' }}>
       {/* 头部区域 */}
       <Box sx={{ position: 'relative' }}>
-        {/* 头部背景层 */}
-       {headerBg.url && (
-  <Box
-    sx={{
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundImage: `url(${headerBg.url})`,
-      backgroundSize: `${headerBg.scale}%`,
-      backgroundPosition: `${headerBg.posX}% ${headerBg.posY}%`,
-      backgroundRepeat: 'no-repeat',
-      // 关键：直接使用图片，不再叠加 opacity，而是由图片本身的透明度决定
-      // 如果需要透明度，应该在图片编辑器中调整，而不是用 CSS opacity
-      // 所以移除 opacity 属性，或者设置为 1
-      opacity: 1,
-      zIndex: 0,
-      pointerEvents: 'none',
-    }}
-  />
-)}
-        {/* 头部内容 */}
-        <Box sx={{ position: 'relative', zIndex: 1, p: 2, borderBottom: '1px solid #f0f0f0', bgcolor: 'rgba(255,255,255,0.9)' }}>
+        {/* 头部背景层 - 透明度由 opacity 控制 */}
+        {headerBg.url && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundImage: `url(${headerBg.url})`,
+              backgroundSize: `${headerBg.scale}%`,
+              backgroundPosition: `${headerBg.posX}% ${headerBg.posY}%`,
+              backgroundRepeat: 'no-repeat',
+              opacity: headerBg.opacity / 100,   // 关键：透明度直接控制背景图片
+              zIndex: 0,
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+        {/* 头部内容层 - 背景透明，确保底层背景透出 */}
+        <Box sx={{ position: 'relative', zIndex: 1, p: 2, borderBottom: '1px solid #f0f0f0', bgcolor: 'transparent' }}>
           <Stack direction="row" justifyContent="flex-end" spacing={1} mb={2}>
             <IconButton size="small" onClick={() => setInfoOpen(true)}><InfoIcon fontSize="small" /></IconButton>
             <IconButton size="small" onClick={openSettings}><SettingsIcon fontSize="small" /></IconButton>
@@ -357,6 +359,7 @@ export default function MobileScheduleView() {
       {/* 计划列表区域 */}
       <Box sx={{ p: 2 }}>
         <Box sx={{ position: 'relative' }}>
+          {/* 计划列表背景层 */}
           {planBoxBg.url && (
             <Box
               sx={{
@@ -376,6 +379,7 @@ export default function MobileScheduleView() {
               }}
             />
           )}
+          {/* 计划列表卡片内容 - 半透明白色背景，便于透出底层图片 */}
           <Card sx={{
             position: 'relative',
             zIndex: 1,
@@ -383,7 +387,7 @@ export default function MobileScheduleView() {
             p: 2,
             minHeight: 400,
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            bgcolor: 'rgba(255,255,255,0.9)',
+            bgcolor: 'rgba(255, 255, 255, 0.85)', // 半透明白色，让背景图片透出
           }}>
             <Stack spacing={1.5}>
               {plans.map(plan => (
