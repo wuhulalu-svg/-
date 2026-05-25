@@ -179,6 +179,10 @@ export default function MobileScheduleView() {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState('');
 
+  // 背景反馈弹窗
+  const [bgSnackbarOpen, setBgSnackbarOpen] = useState(false);
+  const [bgSnackbarMsg, setBgSnackbarMsg] = useState('');
+
   // 实际背景
   const [headerBg, setHeaderBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
   const [planBoxBg, setPlanBoxBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
@@ -213,25 +217,34 @@ export default function MobileScheduleView() {
     setSettingsOpen(true);
   };
 
-  // 顶部背景：确定
   const applyHeaderBg = () => {
     setHeaderBg(tempHeaderBg);
     localStorage.setItem('planHeaderBg', JSON.stringify(tempHeaderBg));
-    // 可选：弹窗不关闭，但用户需要手动关闭整个设置弹窗或继续调整其他项
-  };
-  // 顶部背景：取消（丢弃临时修改）
-  const cancelHeaderBg = () => {
-    setTempHeaderBg({ ...headerBg });
+    setBgSnackbarMsg('已成功设置喵(๑˃ᴗ˂)ﻭ♡');
+    setBgSnackbarOpen(true);
+    setTimeout(() => setBgSnackbarOpen(false), 1500);
   };
 
-  // 计划列表背景：确定
+  const cancelHeaderBg = () => {
+    setTempHeaderBg({ ...headerBg });
+    setBgSnackbarMsg('已取消了~嘿嘿~(*ˊᗜˋ*)');
+    setBgSnackbarOpen(true);
+    setTimeout(() => setBgSnackbarOpen(false), 1500);
+  };
+
   const applyPlanBoxBg = () => {
     setPlanBoxBg(tempPlanBoxBg);
     localStorage.setItem('planBoxBg', JSON.stringify(tempPlanBoxBg));
+    setBgSnackbarMsg('已成功设置喵(๑˃ᴗ˂)ﻭ♡');
+    setBgSnackbarOpen(true);
+    setTimeout(() => setBgSnackbarOpen(false), 1500);
   };
-  // 计划列表背景：取消
+
   const cancelPlanBoxBg = () => {
     setTempPlanBoxBg({ ...planBoxBg });
+    setBgSnackbarMsg('已取消了~嘿嘿~(*ˊᗜˋ*)');
+    setBgSnackbarOpen(true);
+    setTimeout(() => setBgSnackbarOpen(false), 1500);
   };
 
   const updateTempHeader = (updates: any) => {
@@ -239,10 +252,6 @@ export default function MobileScheduleView() {
   };
   const updateTempPlanBox = (updates: any) => {
     setTempPlanBoxBg({ ...tempPlanBoxBg, ...updates });
-  };
-
-  const closeSettings = () => {
-    setSettingsOpen(false);
   };
 
   useEffect(() => {
@@ -469,8 +478,8 @@ export default function MobileScheduleView() {
         </DialogContent>
       </Dialog>
 
-      {/* 背景设置对话框 - 独立确定/取消，并有关闭按钮 */}
-      <Dialog open={settingsOpen} onClose={closeSettings} maxWidth="sm" fullWidth>
+      {/* 背景设置对话框 */}
+      <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="sm" fullWidth>
         <DialogContent sx={{ p: 2 }}>
           <Typography variant="h6" fontWeight={700} mb={2}>⚙️ 背景设置</Typography>
 
@@ -539,8 +548,6 @@ export default function MobileScheduleView() {
               <Button variant="outlined" onClick={cancelPlanBoxBg} sx={{ flex: 1 }}>取消</Button>
             </Stack>
           </Box>
-
-          <Button variant="text" fullWidth sx={{ mt: 3 }} onClick={closeSettings}>关闭</Button>
         </DialogContent>
       </Dialog>
 
@@ -553,7 +560,7 @@ export default function MobileScheduleView() {
         </DialogContent>
       </Dialog>
 
-      {/* 完成任务提示 */}
+      {/* 完成任务反馈 Snackbar */}
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={2000}
@@ -562,6 +569,19 @@ export default function MobileScheduleView() {
         sx={{ zIndex: 9999 }}
       >
         <Alert severity="success" sx={{ bgcolor: '#4caf50', color: 'white' }}>{snackbarMsg}</Alert>
+      </Snackbar>
+
+      {/* 背景操作反馈 Snackbar */}
+      <Snackbar
+        open={bgSnackbarOpen}
+        autoHideDuration={1500}
+        onClose={() => setBgSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        sx={{ zIndex: 9999 }}
+      >
+        <Alert severity="success" sx={{ bgcolor: '#6366f1', color: 'white' }}>
+          {bgSnackbarMsg}
+        </Alert>
       </Snackbar>
     </Box>
   );
