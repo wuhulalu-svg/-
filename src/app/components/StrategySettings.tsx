@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Box, Typography, Stack, IconButton, Card, Button, Dialog, DialogTitle,
   DialogContent, DialogActions, TextField, Collapse, alpha,
@@ -9,7 +9,7 @@ import {
   FitnessCenter, Restaurant, Psychology, Schedule,
 } from '@mui/icons-material';
 
-// 图片编辑器（与做计划相同）
+// ---------- 图片编辑器（支持触摸拖动、缩放、透明度） ----------
 function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50, initialPosY = 50, initialOpacity = 100 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -43,19 +43,19 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
     };
   }, [imageUrl, scale, posX, opacity]);
 
-  const handleMouseDown = (e) => {
+  const startDrag = (clientX, clientY) => {
     setIsDragging(true);
-    lastPos.current = { x: e.clientX, y: e.clientY };
+    lastPos.current = { x: clientX, y: clientY };
   };
-  const handleMouseMove = (e) => {
+  const onDrag = (clientX, clientY) => {
     if (!isDragging) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-    const deltaX = (e.clientX - lastPos.current.x) * scaleX;
-    const deltaY = (e.clientY - lastPos.current.y) * scaleY;
+    const deltaX = (clientX - lastPos.current.x) * scaleX;
+    const deltaY = (clientY - lastPos.current.y) * scaleY;
     const w = canvas.width;
     const h = canvas.height;
     const scaleVal = scale / 100;
@@ -69,33 +69,78 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
     newPosY = Math.min(100, Math.max(0, newPosY));
     setPosX(newPosX);
     setPosY(newPosY);
-    lastPos.current = { x: e.clientX, y: e.clientY };
+    lastPos.current = { x: clientX, y: clientY };
     onUpdate({ scale, posX: newPosX, posY: newPosY, opacity });
   };
-  const handleMouseUp = () => setIsDragging(false);
-  const handleWheel = (e) => {
-    const delta = e.deltaY > 0 ? -5 : 5;
-    const newScale = Math.min(200, Math.max(50, scale + delta));
-    setScale(newScale);
-    onUpdate({ scale: newScale, posX, posY, opacity });
+  const endDrag = () => setIsDragging(false);
+
+  const handleMouseDown = (e) => startDrag(e.clientX, e.clientY);
+  const handleMouseMove = (e) => onDrag(e.clientX, e.clientY);
+  const handleMouseUp = () => endDrag();
+  const handleTouchStart = (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    startDrag(touch.clientX, touch.clientY);
   };
-  const handleOpacity = (e) => {
-    const newOpacity = Number(e.target.value);
-    setOpacity(newOpacity);
-    onUpdate({ scale, posX, posY, opacity: newOpacity });
+  const handleTouchMove = (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    onDrag(touch.clientX, touch.clientY);
   };
+  const handleTouchEnd = (e) => {
+    e.preventDefault();
+    endDrag();
+  };
+
   const handleScaleSlider = (e) => {
     const newScale = Number(e.target.value);
     setScale(newScale);
     onUpdate({ scale: newScale, posX, posY, opacity });
   };
+  const handleOpacitySlider = (e) => {
+    const newOpacity = Number(e.target.value);
+    setOpacity(newOpacity);
+    onUpdate({ scale, posX, posY, opacity: newOpacity });
+  };
+
+  const handleChangeImage = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e: any) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const newUrl = ev.target?.result as string;
+        setScale(100);
+        setPosX(50);
+        setPosY(50);
+        setOpacity(100);
+        onUpdate({ url: newUrl, scale: 100, posX: 50, posY: 50, opacity: 100 });
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
 
   return (
     <Box>
-      <Box ref={containerRef} sx={{ width: 300, height: 400, margin: '0 auto', border: '1px solid #ccc', borderRadius: 2, overflow: 'hidden', cursor: 'grab' }}>
-        <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onWheel={handleWheel} />
+      <Box ref={containerRef} sx={{ width: 300, height: 400, margin: '0 auto', border: '1px solid #ccc', borderRadius: 2, overflow: 'hidden', touchAction: 'none' }}>
+        <canvas
+          ref={canvasRef}
+          style={{ width: '100%', height: '100%', display: 'block' }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        />
       </Box>
-      <Typography variant="caption" display="block" sx={{ mt: 1, textAlign: 'center' }}>鼠标拖拽移动图片，滚轮缩放</Typography>
+      <Typography variant="caption" display="block" sx={{ mt: 1, textAlign: 'center' }}>
+        手指拖动移动图片，下方滑块缩放/透明度
+      </Typography>
       <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
         <Box sx={{ flex: 1 }}>
           <Typography variant="caption">缩放 ({scale}%)</Typography>
@@ -103,9 +148,12 @@ function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50,
         </Box>
         <Box sx={{ flex: 1 }}>
           <Typography variant="caption">透明度 ({opacity}%)</Typography>
-          <input type="range" min={0} max={100} step={1} value={opacity} onChange={handleOpacity} style={{ width: '100%' }} />
+          <input type="range" min={0} max={100} step={1} value={opacity} onChange={handleOpacitySlider} style={{ width: '100%' }} />
         </Box>
       </Stack>
+      <Button variant="outlined" size="small" fullWidth sx={{ mt: 1 }} onClick={handleChangeImage}>
+        更换图片
+      </Button>
     </Box>
   );
 }
@@ -135,48 +183,53 @@ export default function StrategySettings() {
   const [infoOpen, setInfoOpen] = useState(false);
   const [editing, setEditing] = useState<Strategy | null>(null);
   const [form, setForm] = useState({ title: '', content: '' });
-  const [globalBg, setGlobalBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
+  // 卡片背景（无整体背景）
   const [cardBg, setCardBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
+  const [tempCardBg, setTempCardBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
 
   useEffect(() => {
-    const savedGlobal = localStorage.getItem('strategyGlobalBg');
     const savedCard = localStorage.getItem('strategyCardBg');
-    if (savedGlobal) setGlobalBg(JSON.parse(savedGlobal));
-    if (savedCard) setCardBg(JSON.parse(savedCard));
+    if (savedCard) {
+      const parsed = JSON.parse(savedCard);
+      setCardBg(parsed);
+      setTempCardBg(parsed);
+    }
   }, []);
 
   useEffect(() => {
     localStorage.setItem('strategies', JSON.stringify(strategies));
   }, [strategies]);
 
-  const updateBg = (type: 'global' | 'card', newSettings: any) => {
-    if (type === 'global') setGlobalBg(newSettings);
-    else setCardBg(newSettings);
-    localStorage.setItem(type === 'global' ? 'strategyGlobalBg' : 'strategyCardBg', JSON.stringify(newSettings));
+  useEffect(() => {
+    localStorage.setItem('strategyCardBg', JSON.stringify(cardBg));
+  }, [cardBg]);
+
+  const openSettings = () => {
+    setTempCardBg({ ...cardBg });
+    setSettingsOpen(true);
+  };
+  const applySettings = () => {
+    setCardBg(tempCardBg);
+    setSettingsOpen(false);
+  };
+  const cancelSettings = () => {
+    setSettingsOpen(false);
+  };
+  const updateTempCardBg = (updates: any) => {
+    setTempCardBg({ ...tempCardBg, ...updates });
   };
 
-  const handleBgUpload = (type: 'global' | 'card') => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const url = ev.target?.result as string;
-      updateBg(type, { url, scale: 100, posX: 50, posY: 50, opacity: 100 });
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const openDialog = useCallback((s?: Strategy) => {
+  const openDialog = (s?: Strategy) => {
     if (s) { setEditing(s); setForm({ title: s.title, content: s.content }); }
     else { setEditing(null); setForm({ title: '', content: '' }); }
     setDialogOpen(true);
-  }, []);
+  };
 
   useEffect(() => {
     const handler = () => openDialog();
     window.addEventListener('openAddStrategyDialog', handler);
     return () => window.removeEventListener('openAddStrategyDialog', handler);
-  }, [openDialog]);
+  }, []);
 
   const save = () => {
     if (!form.title.trim()) return;
@@ -191,116 +244,116 @@ export default function StrategySettings() {
   const toggle = (id: string) => setStrategies(prev => prev.map(s => s.id === id ? { ...s, expanded: !s.expanded } : s));
 
   return (
-    <Box sx={{ position: 'relative', minHeight: '100%', p: 2 }}>
-      {globalBg.url && (
-        <Box
-          sx={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundImage: `url(${globalBg.url})`,
-            backgroundSize: `${globalBg.scale}%`,
-            backgroundPosition: `${globalBg.posX}% ${globalBg.posY}%`,
-            opacity: globalBg.opacity / 100,
-            zIndex: 0,
-          }}
-        />
-      )}
-      <Box sx={{ position: 'relative', zIndex: 1 }}>
-        <Stack direction="row" justifyContent="flex-end" spacing={1} mb={3}>
-          <IconButton size="small" onClick={() => setInfoOpen(true)}><InfoIcon fontSize="small" /></IconButton>
-          <IconButton size="small" onClick={() => setSettingsOpen(true)}><SettingsIcon fontSize="small" /></IconButton>
-        </Stack>
+    <Box sx={{ minHeight: '100%', p: 2, bgcolor: '#FAFAFA' }}>
+      <Stack direction="row" justifyContent="flex-end" spacing={1} mb={3}>
+        <IconButton size="small" onClick={() => setInfoOpen(true)}><InfoIcon fontSize="small" /></IconButton>
+        <IconButton size="small" onClick={openSettings}><SettingsIcon fontSize="small" /></IconButton>
+      </Stack>
 
-        <Stack spacing={2}>
-          {strategies.map(s => {
-            const Icon = getIcon(s.title);
-            return (
-              <Card key={s.id} sx={{
-                p: 2,
-                bgcolor: 'rgba(255,255,255,0.9)',
-                backdropFilter: 'blur(4px)',
-                backgroundImage: cardBg.url ? `url(${cardBg.url})` : 'none',
-                backgroundSize: `${cardBg.scale}%`,
-                backgroundPosition: `${cardBg.posX}% ${cardBg.posY}%`,
-              }}>
-                <Stack spacing={1}>
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Icon sx={{ color: 'primary.main' }} />
-                    <Typography variant="h6" fontWeight={600} flex={1}>{s.title}</Typography>
-                    <IconButton size="small" onClick={() => openDialog(s)}><EditIcon fontSize="small" /></IconButton>
-                    <IconButton size="small" color="error" onClick={() => del(s.id)}><DeleteIcon fontSize="small" /></IconButton>
-                  </Stack>
-                  {s.content && (
-                    <>
-                      <Collapse in={s.expanded} collapsedSize={60}>
-                        <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>{s.content}</Typography>
-                      </Collapse>
-                      {s.content.length > 100 && (
-                        <Button size="small" onClick={() => toggle(s.id)} endIcon={s.expanded ? <ExpandLess /> : <ExpandMore />} sx={{ alignSelf: 'flex-start' }}>
-                          {s.expanded ? '收起' : '展开'}
-                        </Button>
-                      )}
-                    </>
-                  )}
+      <Stack spacing={2}>
+        {strategies.map(s => {
+          const Icon = getIcon(s.title);
+          return (
+            <Card key={s.id} sx={{
+              p: 2,
+              backgroundImage: cardBg.url ? `url(${cardBg.url})` : 'none',
+              backgroundSize: `${cardBg.scale}%`,
+              backgroundPosition: `${cardBg.posX}% ${cardBg.posY}%`,
+              transition: 'all 0.2s',
+              border: '1px solid',
+              borderColor: 'divider',
+              bgcolor: 'rgba(255,255,255,0.9)',
+              backdropFilter: 'blur(4px)',
+            }}>
+              <Stack spacing={1}>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <Icon sx={{ color: 'primary.main' }} />
+                  <Typography variant="h6" fontWeight={600} flex={1}>{s.title}</Typography>
+                  <IconButton size="small" onClick={() => openDialog(s)}><EditIcon fontSize="small" /></IconButton>
+                  <IconButton size="small" color="error" onClick={() => del(s.id)}><DeleteIcon fontSize="small" /></IconButton>
                 </Stack>
-              </Card>
-            );
-          })}
-          {strategies.length === 0 && (
-            <Card sx={{ p: 6, textAlign: 'center', bgcolor: alpha('#6366f1',0.05) }}>
-              <Schedule sx={{ fontSize: 48, color: 'text.disabled' }} />
-              <Typography>暂无策略，点击底部加号添加</Typography>
+                {s.content && (
+                  <>
+                    <Collapse in={s.expanded} collapsedSize={60}>
+                      <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>{s.content}</Typography>
+                    </Collapse>
+                    {s.content.length > 100 && (
+                      <Button size="small" onClick={() => toggle(s.id)} endIcon={s.expanded ? <ExpandLess /> : <ExpandMore />} sx={{ alignSelf: 'flex-start' }}>
+                        {s.expanded ? '收起' : '展开'}
+                      </Button>
+                    )}
+                  </>
+                )}
+              </Stack>
             </Card>
+          );
+        })}
+        {strategies.length === 0 && (
+          <Card sx={{ p: 6, textAlign: 'center', bgcolor: alpha('#6366f1',0.05) }}>
+            <Schedule sx={{ fontSize: 48, color: 'text.disabled' }} />
+            <Typography>暂无策略，点击底部加号添加</Typography>
+          </Card>
+        )}
+      </Stack>
+
+      {/* 添加/编辑策略对话框 */}
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
+        <DialogTitle>{editing ? '编辑策略' : '添加策略'}</DialogTitle>
+        <DialogContent>
+          <TextField label="策略名称" value={form.title} onChange={e => setForm({...form, title: e.target.value})} fullWidth margin="normal" />
+          <TextField label="策略内容" multiline rows={4} value={form.content} onChange={e => setForm({...form, content: e.target.value})} fullWidth margin="normal" />
+        </DialogContent>
+        <DialogActions><Button onClick={() => setDialogOpen(false)}>取消</Button><Button onClick={save} variant="contained">保存</Button></DialogActions>
+      </Dialog>
+
+      {/* 卡片背景设置对话框 */}
+      <Dialog open={settingsOpen} onClose={cancelSettings} maxWidth="md" fullWidth>
+        <DialogContent>
+          <Typography variant="h6" fontWeight={700} mb={2}>🎨 卡片背景设置</Typography>
+          {tempCardBg.url ? (
+            <ImageEditor
+              imageUrl={tempCardBg.url}
+              onUpdate={updateTempCardBg}
+              initialScale={tempCardBg.scale}
+              initialPosX={tempCardBg.posX}
+              initialPosY={tempCardBg.posY}
+              initialOpacity={tempCardBg.opacity}
+            />
+          ) : (
+            <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }}>
+              上传卡片背景图片
+              <input
+                type="file"
+                hidden
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    const url = ev.target?.result as string;
+                    updateTempCardBg({ url, scale: 100, posX: 50, posY: 50, opacity: 100 });
+                  };
+                  reader.readAsDataURL(file);
+                }}
+              />
+            </Button>
           )}
-        </Stack>
+          <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
+            <Button variant="outlined" onClick={cancelSettings} sx={{ flex: 1 }}>取消</Button>
+            <Button variant="contained" onClick={applySettings} sx={{ flex: 1 }}>确定</Button>
+          </Stack>
+        </DialogContent>
+      </Dialog>
 
-        <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
-          <DialogTitle>{editing ? '编辑策略' : '添加策略'}</DialogTitle>
-          <DialogContent>
-            <TextField label="策略名称" value={form.title} onChange={e => setForm({...form, title: e.target.value})} fullWidth margin="normal" />
-            <TextField label="策略内容" multiline rows={4} value={form.content} onChange={e => setForm({...form, content: e.target.value})} fullWidth margin="normal" />
-          </DialogContent>
-          <DialogActions><Button onClick={() => setDialogOpen(false)}>取消</Button><Button onClick={save} variant="contained">保存</Button></DialogActions>
-        </Dialog>
-
-        <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="md" fullWidth>
-          <DialogContent>
-            <Typography variant="h6" fontWeight={700} mb={2}>🎨 背景设置</Typography>
-            <Typography variant="subtitle2">🌍 整体背景</Typography>
-            {globalBg.url ? (
-              <ImageEditor
-                imageUrl={globalBg.url}
-                onUpdate={(s) => updateBg('global', { ...globalBg, ...s })}
-                initialScale={globalBg.scale} initialPosX={globalBg.posX} initialPosY={globalBg.posY} initialOpacity={globalBg.opacity}
-              />
-            ) : (
-              <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }}>上传整体背景图片<input type="file" hidden accept="image/*" onChange={handleBgUpload('global')} /></Button>
-            )}
-            <Typography variant="subtitle2" sx={{ mt: 3 }}>📋 卡片背景</Typography>
-            {cardBg.url ? (
-              <ImageEditor
-                imageUrl={cardBg.url}
-                onUpdate={(s) => updateBg('card', { ...cardBg, ...s })}
-                initialScale={cardBg.scale} initialPosX={cardBg.posX} initialPosY={cardBg.posY} initialOpacity={cardBg.opacity}
-              />
-            ) : (
-              <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }}>上传卡片背景图片<input type="file" hidden accept="image/*" onChange={handleBgUpload('card')} /></Button>
-            )}
-            <Button variant="contained" fullWidth sx={{ mt: 3 }} onClick={() => setSettingsOpen(false)}>完成</Button>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={infoOpen} onClose={() => setInfoOpen(false)}>
-          <DialogContent>
-            <Typography variant="h6" fontWeight={700}>📚 策略是什么？</Typography>
-            <Typography variant="body2" sx={{ mt: 1 }}>记录你想坚持的习惯或方法，例如养肤策略、学习计划等。</Typography>
-            <Button variant="contained" fullWidth sx={{ mt: 2 }} onClick={() => setInfoOpen(false)}>明白啦</Button>
-          </DialogContent>
-        </Dialog>
-      </Box>
+      {/* 功能介绍 */}
+      <Dialog open={infoOpen} onClose={() => setInfoOpen(false)}>
+        <DialogContent>
+          <Typography variant="h6" fontWeight={700}>📚 策略是什么？</Typography>
+          <Typography variant="body2" sx={{ mt: 1 }}>记录你想坚持的习惯或方法，例如养肤策略、学习计划等。</Typography>
+          <Button variant="contained" fullWidth sx={{ mt: 2 }} onClick={() => setInfoOpen(false)}>明白啦</Button>
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }
