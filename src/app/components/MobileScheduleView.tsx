@@ -8,7 +8,7 @@ import {
   ChevronLeft, ChevronRight, CalendarToday as CalendarIcon, Info as InfoIcon,
 } from '@mui/icons-material';
 
-// ---------- 图片编辑器（手机友好版） ----------
+// ---------- 图片编辑器 ----------
 function ImageEditor({ imageUrl, onUpdate, initialScale = 100, initialPosX = 50, initialPosY = 50, initialOpacity = 100 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -179,10 +179,10 @@ export default function MobileScheduleView() {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState('');
 
-  // 背景设置
+  // 实际背景
   const [headerBg, setHeaderBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
   const [planBoxBg, setPlanBoxBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
-  // 临时背景
+  // 临时编辑状态
   const [tempHeaderBg, setTempHeaderBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
   const [tempPlanBoxBg, setTempPlanBoxBg] = useState({ url: '', scale: 100, posX: 50, posY: 50, opacity: 100 });
 
@@ -212,22 +212,27 @@ export default function MobileScheduleView() {
     setTempPlanBoxBg({ ...planBoxBg });
     setSettingsOpen(true);
   };
-  const applyBgSettings = () => {
+
+  const applyHeaderBg = () => {
     setHeaderBg(tempHeaderBg);
-    setPlanBoxBg(tempPlanBoxBg);
     localStorage.setItem('planHeaderBg', JSON.stringify(tempHeaderBg));
+  };
+  const cancelHeaderBg = () => {
+    setTempHeaderBg({ ...headerBg });
+  };
+  const applyPlanBoxBg = () => {
+    setPlanBoxBg(tempPlanBoxBg);
     localStorage.setItem('planBoxBg', JSON.stringify(tempPlanBoxBg));
-    setSettingsOpen(false);
   };
-  const cancelBgSettings = () => {
-    setSettingsOpen(false);
+  const cancelPlanBoxBg = () => {
+    setTempPlanBoxBg({ ...planBoxBg });
   };
-  const updateTempBg = (type: 'header' | 'planbox', updates: any) => {
-    if (type === 'header') {
-      setTempHeaderBg({ ...tempHeaderBg, ...updates });
-    } else {
-      setTempPlanBoxBg({ ...tempPlanBoxBg, ...updates });
-    }
+
+  const updateTempHeader = (updates: any) => {
+    setTempHeaderBg({ ...tempHeaderBg, ...updates });
+  };
+  const updateTempPlanBox = (updates: any) => {
+    setTempPlanBoxBg({ ...tempPlanBoxBg, ...updates });
   };
 
   useEffect(() => {
@@ -373,11 +378,11 @@ export default function MobileScheduleView() {
             p: 2,
             minHeight: 400,
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            bgcolor: 'rgba(255, 255, 255, 0.85)',
+            bgcolor: 'transparent', // 完全透明，让底层背景完全显示
           }}>
             <Stack spacing={1.5}>
               {plans.map(plan => (
-                <Paper key={plan.id} sx={{ p: 1.5, bgcolor: plan.completed ? alpha('#4caf50',0.1) : 'white', border: `1px solid ${plan.completed ? '#4caf50' : '#e0e0e0'}` }}>
+                <Paper key={plan.id} sx={{ p: 1.5, bgcolor: plan.completed ? alpha('#4caf50',0.1) : 'rgba(255,255,255,0.9)', border: `1px solid ${plan.completed ? '#4caf50' : '#e0e0e0'}` }}>
                   <Stack direction="row" spacing={1} alignItems="center">
                     <Checkbox checked={plan.completed} onChange={() => togglePlan(plan.id)} size="small" />
                     <Stack direction="row" spacing={1} alignItems="center" sx={{ bgcolor: alpha('#6366f1',0.1), px: 1, py: 0.5, borderRadius: 2 }}>
@@ -433,7 +438,7 @@ export default function MobileScheduleView() {
               onChange={(e) => setNewPlanContent(e.target.value)}
             />
             <Stack direction="row" spacing={2}>
-              <Button variant="contained" onClick={addPlan} disabled={!newPlanContent.trim()} sx={{ flex: 1, textTransform: 'none' }}>添加</Button>
+              <Button variant="contained" onClick={addPlan} disabled={!newPlanContent.trim()} sx={{ flex: 1, textTransform: 'none' }}>确定</Button>
               <Button variant="outlined" onClick={() => setDialogOpen(false)} sx={{ flex: 1, textTransform: 'none' }}>取消</Button>
             </Stack>
           </Stack>
@@ -454,70 +459,76 @@ export default function MobileScheduleView() {
         </DialogContent>
       </Dialog>
 
-      {/* 背景设置对话框 - 手机友好排版，确定在左取消在右 */}
-      <Dialog open={settingsOpen} onClose={cancelBgSettings} maxWidth="sm" fullWidth>
+      {/* 背景设置对话框 - 独立确定/取消 */}
+      <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="sm" fullWidth>
         <DialogContent sx={{ p: 2 }}>
           <Typography variant="h6" fontWeight={700} mb={2}>⚙️ 背景设置</Typography>
-          <Stack spacing={3}>
-            <Box>
-              <Typography variant="subtitle2" fontWeight={600}>顶部区域背景</Typography>
-              {tempHeaderBg.url ? (
-                <ImageEditor
-                  imageUrl={tempHeaderBg.url}
-                  onUpdate={(updates) => updateTempBg('header', updates)}
-                  initialScale={tempHeaderBg.scale}
-                  initialPosX={tempHeaderBg.posX}
-                  initialPosY={tempHeaderBg.posY}
-                  initialOpacity={tempHeaderBg.opacity}
-                />
-              ) : (
-                <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }}>
-                  上传图片
-                  <input type="file" hidden accept="image/*" onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                      const url = ev.target?.result as string;
-                      updateTempBg('header', { url, scale: 100, posX: 50, posY: 50, opacity: 100 });
-                    };
-                    reader.readAsDataURL(file);
-                  }} />
-                </Button>
-              )}
-            </Box>
-            <Box>
-              <Typography variant="subtitle2" fontWeight={600}>计划列表背景</Typography>
-              {tempPlanBoxBg.url ? (
-                <ImageEditor
-                  imageUrl={tempPlanBoxBg.url}
-                  onUpdate={(updates) => updateTempBg('planbox', updates)}
-                  initialScale={tempPlanBoxBg.scale}
-                  initialPosX={tempPlanBoxBg.posX}
-                  initialPosY={tempPlanBoxBg.posY}
-                  initialOpacity={tempPlanBoxBg.opacity}
-                />
-              ) : (
-                <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }}>
-                  上传图片
-                  <input type="file" hidden accept="image/*" onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                      const url = ev.target?.result as string;
-                      updateTempBg('planbox', { url, scale: 100, posX: 50, posY: 50, opacity: 100 });
-                    };
-                    reader.readAsDataURL(file);
-                  }} />
-                </Button>
-              )}
-            </Box>
-            <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
-              <Button variant="contained" onClick={applyBgSettings} sx={{ flex: 1 }}>确定</Button>
-              <Button variant="outlined" onClick={cancelBgSettings} sx={{ flex: 1 }}>取消</Button>
+
+          {/* 顶部区域背景区块 */}
+          <Box sx={{ mb: 4, borderBottom: '1px solid #eee', pb: 2 }}>
+            <Typography variant="subtitle2" fontWeight={600} gutterBottom>顶部区域背景</Typography>
+            {tempHeaderBg.url ? (
+              <ImageEditor
+                imageUrl={tempHeaderBg.url}
+                onUpdate={updateTempHeader}
+                initialScale={tempHeaderBg.scale}
+                initialPosX={tempHeaderBg.posX}
+                initialPosY={tempHeaderBg.posY}
+                initialOpacity={tempHeaderBg.opacity}
+              />
+            ) : (
+              <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }}>
+                上传图片
+                <input type="file" hidden accept="image/*" onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    const url = ev.target?.result as string;
+                    updateTempHeader({ url, scale: 100, posX: 50, posY: 50, opacity: 100 });
+                  };
+                  reader.readAsDataURL(file);
+                }} />
+              </Button>
+            )}
+            <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+              <Button variant="contained" onClick={applyHeaderBg} sx={{ flex: 1 }}>确定</Button>
+              <Button variant="outlined" onClick={cancelHeaderBg} sx={{ flex: 1 }}>取消</Button>
             </Stack>
-          </Stack>
+          </Box>
+
+          {/* 计划列表背景区块 */}
+          <Box>
+            <Typography variant="subtitle2" fontWeight={600} gutterBottom>计划列表背景</Typography>
+            {tempPlanBoxBg.url ? (
+              <ImageEditor
+                imageUrl={tempPlanBoxBg.url}
+                onUpdate={updateTempPlanBox}
+                initialScale={tempPlanBoxBg.scale}
+                initialPosX={tempPlanBoxBg.posX}
+                initialPosY={tempPlanBoxBg.posY}
+                initialOpacity={tempPlanBoxBg.opacity}
+              />
+            ) : (
+              <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }}>
+                上传图片
+                <input type="file" hidden accept="image/*" onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    const url = ev.target?.result as string;
+                    updateTempPlanBox({ url, scale: 100, posX: 50, posY: 50, opacity: 100 });
+                  };
+                  reader.readAsDataURL(file);
+                }} />
+              </Button>
+            )}
+            <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+              <Button variant="contained" onClick={applyPlanBoxBg} sx={{ flex: 1 }}>确定</Button>
+              <Button variant="outlined" onClick={cancelPlanBoxBg} sx={{ flex: 1 }}>取消</Button>
+            </Stack>
+          </Box>
         </DialogContent>
       </Dialog>
 
