@@ -5,10 +5,20 @@ import { Person as PersonIcon, CloudUpload as UploadIcon } from '@mui/icons-mate
 export default function AppSettings() {
   const [userName, setUserName] = useState('');
   const [userAvatar, setUserAvatar] = useState('');
+  
+  // 四个图标的状态
+  const [planIcon, setPlanIcon] = useState('');
+  const [strategyIcon, setStrategyIcon] = useState('');
+  const [inspireIcon, setInspireIcon] = useState('');
+  const [profileIcon, setProfileIcon] = useState('');
 
   useEffect(() => {
     setUserName(localStorage.getItem('userName') || '');
     setUserAvatar(localStorage.getItem('userAvatar') || '');
+    setPlanIcon(localStorage.getItem('planIcon') || '');
+    setStrategyIcon(localStorage.getItem('strategyIcon') || '');
+    setInspireIcon(localStorage.getItem('inspireIcon') || '');
+    setProfileIcon(localStorage.getItem('profileIcon') || '');
   }, []);
 
   const saveProfile = () => {
@@ -30,9 +40,37 @@ export default function AppSettings() {
     reader.readAsDataURL(file);
   };
 
+  // 图标上传通用函数
+  const handleIconUpload = (type: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const url = ev.target?.result as string;
+      localStorage.setItem(`${type}Icon`, url);
+      if (type === 'plan') setPlanIcon(url);
+      else if (type === 'strategy') setStrategyIcon(url);
+      else if (type === 'inspire') setInspireIcon(url);
+      else if (type === 'profile') setProfileIcon(url);
+      window.dispatchEvent(new Event('storage'));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // 清除图标
+  const clearIcon = (type: string) => {
+    localStorage.removeItem(`${type}Icon`);
+    if (type === 'plan') setPlanIcon('');
+    else if (type === 'strategy') setStrategyIcon('');
+    else if (type === 'inspire') setInspireIcon('');
+    else if (type === 'profile') setProfileIcon('');
+    window.dispatchEvent(new Event('storage'));
+  };
+
   return (
     <Paper sx={{ p: 4, bgcolor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(10px)' }}>
       <Stack spacing={4} alignItems="center">
+        {/* 个人资料区域 */}
         <Box sx={{ position: 'relative' }}>
           <Avatar src={userAvatar} sx={{ width: 120, height: 120, border: '4px solid', borderColor: 'primary.main' }}>
             <PersonIcon sx={{ fontSize: 60 }} />
@@ -43,6 +81,32 @@ export default function AppSettings() {
         </Box>
         <TextField label="用户名" value={userName} onChange={e => setUserName(e.target.value)} fullWidth />
         <Button variant="contained" onClick={saveProfile} size="large">保存个人资料</Button>
+
+        {/* 自定义底部导航图标区域 */}
+        <Box sx={{ width: '100%', mt: 2, textAlign: 'center' }}>
+          <Typography variant="subtitle1" fontWeight={600} gutterBottom>自定义底部图标</Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
+            上传图片将替换底部导航栏图标（建议使用 48x48 透明背景 PNG）
+          </Typography>
+          <Stack direction="row" spacing={2} justifyContent="center" flexWrap="wrap" useFlexGap>
+            <Stack alignItems="center" spacing={0.5}>
+              <Button variant="outlined" component="label" size="small">📅 做计划<input type="file" hidden accept="image/*" onChange={handleIconUpload('plan')} /></Button>
+              {planIcon && <Button size="small" color="error" onClick={() => clearIcon('plan')}>清除</Button>}
+            </Stack>
+            <Stack alignItems="center" spacing={0.5}>
+              <Button variant="outlined" component="label" size="small">🧠 策略<input type="file" hidden accept="image/*" onChange={handleIconUpload('strategy')} /></Button>
+              {strategyIcon && <Button size="small" color="error" onClick={() => clearIcon('strategy')}>清除</Button>}
+            </Stack>
+            <Stack alignItems="center" spacing={0.5}>
+              <Button variant="outlined" component="label" size="small">💡 灵感<input type="file" hidden accept="image/*" onChange={handleIconUpload('inspire')} /></Button>
+              {inspireIcon && <Button size="small" color="error" onClick={() => clearIcon('inspire')}>清除</Button>}
+            </Stack>
+            <Stack alignItems="center" spacing={0.5}>
+              <Button variant="outlined" component="label" size="small">😊 我的<input type="file" hidden accept="image/*" onChange={handleIconUpload('profile')} /></Button>
+              {profileIcon && <Button size="small" color="error" onClick={() => clearIcon('profile')}>清除</Button>}
+            </Stack>
+          </Stack>
+        </Box>
       </Stack>
     </Paper>
   );
