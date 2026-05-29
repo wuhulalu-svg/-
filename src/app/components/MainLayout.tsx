@@ -23,6 +23,12 @@ export default function MainLayout() {
   const [userName, setUserName] = useState('');
   const [userAvatar, setUserAvatar] = useState('');
 
+  // 图标状态
+  const [planIcon, setPlanIcon] = useState('');
+  const [strategyIcon, setStrategyIcon] = useState('');
+  const [inspireIcon, setInspireIcon] = useState('');
+  const [profileIcon, setProfileIcon] = useState('');
+
   useEffect(() => {
     const savedSidebarBg = localStorage.getItem('sidebarBackgroundImage');
     const savedName = localStorage.getItem('userName');
@@ -32,18 +38,18 @@ export default function MainLayout() {
     if (savedAvatar) setUserAvatar(savedAvatar);
   }, []);
 
+  // 加载图标
+  const loadIcons = () => {
+    setPlanIcon(localStorage.getItem('planIcon') || '');
+    setStrategyIcon(localStorage.getItem('strategyIcon') || '');
+    setInspireIcon(localStorage.getItem('inspireIcon') || '');
+    setProfileIcon(localStorage.getItem('profileIcon') || '');
+  };
+
   useEffect(() => {
-    const handleStorageChange = () => {
-      setSidebarBackground(localStorage.getItem('sidebarBackgroundImage') || '');
-      setUserName(localStorage.getItem('userName') || '');
-      setUserAvatar(localStorage.getItem('userAvatar') || '');
-    };
-    window.addEventListener('storage', handleStorageChange);
-    const interval = setInterval(handleStorageChange, 500);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
-    };
+    loadIcons();
+    window.addEventListener('storage', loadIcons);
+    return () => window.removeEventListener('storage', loadIcons);
   }, []);
 
   const handleAddClick = () => {
@@ -80,20 +86,33 @@ export default function MainLayout() {
           px: 2,
         }}
       >
+        {/* 做计划 */}
         <IconButton
           onClick={() => setSelectedView('plan')}
           sx={{ flexDirection: 'column', gap: 0.5, color: selectedView === 'plan' ? '#333' : 'text.secondary' }}
         >
-          <CalendarMonthIcon />
+          {planIcon ? (
+            <Box component="img" src={planIcon} sx={{ width: 24, height: 24 }} />
+          ) : (
+            <CalendarMonthIcon />
+          )}
           <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>做计划</Typography>
         </IconButton>
+
+        {/* 策略 */}
         <IconButton
           onClick={() => setSelectedView('strategy')}
           sx={{ flexDirection: 'column', gap: 0.5, color: selectedView === 'strategy' ? '#333' : 'text.secondary' }}
         >
-          <PsychologyIcon />
+          {strategyIcon ? (
+            <Box component="img" src={strategyIcon} sx={{ width: 24, height: 24 }} />
+          ) : (
+            <PsychologyIcon />
+          )}
           <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>策略</Typography>
         </IconButton>
+
+        {/* 中央加号 */}
         <Box
           onClick={handleAddClick}
           sx={{
@@ -111,23 +130,35 @@ export default function MainLayout() {
         >
           <AddIcon sx={{ fontSize: 32 }} />
         </Box>
+
+        {/* 灵感 */}
         <IconButton
           onClick={() => setSelectedView('schedule')}
           sx={{ flexDirection: 'column', gap: 0.5, color: selectedView === 'schedule' ? '#333' : 'text.secondary' }}
         >
-          <Box component="span" sx={{ fontSize: 24 }}>💡</Box>
+          {inspireIcon ? (
+            <Box component="img" src={inspireIcon} sx={{ width: 24, height: 24 }} />
+          ) : (
+            <Box component="span" sx={{ fontSize: 24 }}>💡</Box>
+          )}
           <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>灵感</Typography>
         </IconButton>
+
+        {/* 我的 */}
         <IconButton
           onClick={() => setSelectedView('settings')}
           sx={{ flexDirection: 'column', gap: 0.5, color: selectedView === 'settings' ? '#333' : 'text.secondary' }}
         >
-          <Box component="span" sx={{ fontSize: 24 }}>😊</Box>
+          {profileIcon ? (
+            <Box component="img" src={profileIcon} sx={{ width: 24, height: 24 }} />
+          ) : (
+            <Box component="span" sx={{ fontSize: 24 }}>😊</Box>
+          )}
           <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>我的</Typography>
         </IconButton>
       </Box>
 
-      {/* 我的页面头部 */}
+      {/* 我的页面头部（仅设置视图） */}
       {selectedView === 'settings' && (
         <Box
           sx={{
@@ -164,7 +195,7 @@ export default function MainLayout() {
         </Box>
       )}
 
-      {/* 内容区域 */}
+      {/* 主要内容区域 */}
       <Box sx={{ flex: 1, overflowY: 'auto', pb: 9 }}>
         {selectedView === 'plan' && <MobileScheduleView />}
         {selectedView === 'schedule' && <InspirationView />}
